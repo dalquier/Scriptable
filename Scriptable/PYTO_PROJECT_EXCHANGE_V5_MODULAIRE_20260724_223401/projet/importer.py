@@ -4,8 +4,8 @@ import json
 import re
 from pathlib import Path
 
-from config import FILE_BEGIN, FILE_END, INDEX_FILENAME, PART_PREFIX, PART_SUFFIX
-from utils import decode_base64, safe_join, sha256_bytes, write_bytes
+from ppx_config import FILE_BEGIN, FILE_END, INDEX_FILENAME, PART_PREFIX, PART_SUFFIX
+from ppx_utils import decode_base64, safe_join, sha256_bytes, write_bytes
 
 
 class ImportErrorExchange(Exception):
