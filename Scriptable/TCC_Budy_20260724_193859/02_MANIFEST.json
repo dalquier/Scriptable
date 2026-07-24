@@ -1,0 +1,31 @@
+{
+  "project_name": "TCC_Budy",
+  "generated_at": "2026-07-24T19:38:59+02:00",
+  "repository": "dalquier/Scriptable",
+  "branch": "main",
+  "root_folder": "Scriptable/TCC_Budy_20260724_193859",
+  "entrypoint": "projet/app.py",
+  "files": [
+    {"path":"projet/.gitignore","type":"text","required":true,"description":".gitignore"},
+    {"path":"projet/INSTALLATION_PYTO.md","type":"markdown","required":true,"description":"INSTALLATION_PYTO.md"},
+    {"path":"projet/README.md","type":"markdown","required":true,"description":"README.md"},
+    {"path":"projet/app.py","type":"python","required":true,"description":"app.py"},
+    {"path":"projet/bootstrap.py","type":"python","required":true,"description":"bootstrap.py"},
+    {"path":"projet/migrations/001_conversations_messages.sql","type":"sql","required":true,"description":"001_conversations_messages.sql"},
+    {"path":"projet/run_tests.py","type":"python","required":true,"description":"run_tests.py"},
+    {"path":"projet/tcc_budy/application/conversation_service.py","type":"python","required":true,"description":"conversation_service.py"},
+    {"path":"projet/tcc_budy/domain/models.py","type":"python","required":true,"description":"models.py"},
+    {"path":"projet/tcc_budy/providers/base.py","type":"python","required":true,"description":"base.py"},
+    {"path":"projet/tcc_budy/providers/simulator.py","type":"python","required":true,"description":"simulator.py"},
+    {"path":"projet/tcc_budy/storage/conversation_repository.py","type":"python","required":true,"description":"conversation_repository.py"},
+    {"path":"projet/tcc_budy/storage/database.py","type":"python","required":true,"description":"database.py"},
+    {"path":"projet/tcc_budy/storage/migrations.py","type":"python","required":true,"description":"migrations.py"},
+    {"path":"projet/tcc_budy/support/errors.py","type":"python","required":true,"description":"errors.py"},
+    {"path":"projet/tcc_budy/support/logging_config.py","type":"python","required":true,"description":"logging_config.py"},
+    {"path":"projet/tcc_budy/ui/assets/app.css","type":"css","required":true,"description":"app.css"},
+    {"path":"projet/tcc_budy/ui/assets/app.js","type":"javascript","required":true,"description":"app.js"},
+    {"path":"projet/tcc_budy/ui/assets/index.html","type":"html","required":true,"description":"index.html"},
+    {"path":"projet/tcc_budy/ui/webview.py","type":"python","required":true,"description":"webview.py"},
+    {"path":"projet/tests/test_core.py","type":"python","required":true,"description":"test_core.py"}
+  ]
+}
