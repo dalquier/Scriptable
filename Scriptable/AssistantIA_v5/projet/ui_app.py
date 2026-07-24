@@ -1,12 +1,4 @@
-"""Interface iPhone professionnelle et robuste pour AssistantIA v5.
-
-Principes :
-- barre supérieure claire et compacte ;
-- zone de conversation lisible ;
-- panneau de saisie placé en haut pour rester visible au-dessus du clavier ;
-- boutons explicites : Nouveau, Web, Fermer ;
-- compatibilité avec plusieurs versions de Pyto.
-"""
+"""Interface iPhone professionnelle pour AssistantIA v5."""
 
 from __future__ import annotations
 
@@ -19,10 +11,9 @@ from api_client import OpenAIClientError
 from app import AssistantIAApp
 from config import APP_NAME, APP_VERSION
 
-
 TOP_SAFE = 54
 HEADER_HEIGHT = 64
-TOOLBAR_HEIGHT = 56
+TOOLBAR_HEIGHT = 58
 STATUS_HEIGHT = 24
 PANEL_HEIGHT = 246
 MARGIN = 12
@@ -39,12 +30,8 @@ def _color(name: str, fallback: Any = None) -> Any:
 
 
 def _button(title: str, action: Any) -> Any:
-    button_type = getattr(ui, "BUTTON_TYPE_SYSTEM", None)
     try:
-        if button_type is not None:
-            button = ui.Button(type=button_type, title=title)
-        else:
-            button = ui.Button(title=title)
+        button = ui.Button(title=title)
     except Exception:
         button = ui.Button()
         button.title = title
@@ -54,8 +41,7 @@ def _button(title: str, action: Any) -> Any:
 
 def _set_font(view: Any, size: float, bold: bool = False) -> None:
     try:
-        font_name = "HelveticaNeue-Bold" if bold else "HelveticaNeue"
-        view.font = ui.Font(font_name, size)
+        view.font = ui.Font("HelveticaNeue-Bold" if bold else "HelveticaNeue", size)
     except Exception:
         try:
             view.font_size = size
@@ -70,14 +56,15 @@ class AssistantIAView(ui.View):
         self.background_color = _color("SYSTEM_BACKGROUND")
         self.web_enabled = False
         self.is_sending = False
-        self.composer_open = False
         self.app = AssistantIAApp()
         self._build_ui()
+
         try:
             self.app.start()
             self.status.text = "Prêt"
         except Exception as exc:
             self.status.text = str(exc)
+
         self.refresh_messages()
 
     def _build_ui(self) -> None:
@@ -87,7 +74,7 @@ class AssistantIAView(ui.View):
 
         self.title_label = ui.Label(text=APP_NAME)
         self.title_label.text_color = _color("LABEL")
-        _set_font(self.title_label, 21, bold=True)
+        _set_font(self.title_label, 21, True)
         self.header.add_subview(self.title_label)
 
         self.subtitle_label = ui.Label(text=f"Assistant personnel · v{APP_VERSION}")
@@ -124,7 +111,7 @@ class AssistantIAView(ui.View):
         self.web_button = _button("Web désactivé", self.toggle_web)
         self.toolbar.add_subview(self.web_button)
 
-        self.write_button = _button("Écrire un message…", self.open_composer)
+        self.write_button = _button("Écrire…", self.open_composer)
         self.toolbar.add_subview(self.write_button)
 
         self.composer_panel = ui.View()
@@ -134,10 +121,10 @@ class AssistantIAView(ui.View):
 
         self.composer_title = ui.Label(text="Nouveau message")
         self.composer_title.text_color = _color("LABEL")
-        _set_font(self.composer_title, 18, bold=True)
+        _set_font(self.composer_title, 18, True)
         self.composer_panel.add_subview(self.composer_title)
 
-        self.composer_hint = ui.Label(text="Votre message reste visible au-dessus du clavier.")
+        self.composer_hint = ui.Label(text="La zone de saisie reste visible au-dessus du clavier.")
         self.composer_hint.text_color = _color("SECONDARY_LABEL")
         _set_font(self.composer_hint, 12)
         self.composer_panel.add_subview(self.composer_hint)
@@ -173,9 +160,9 @@ class AssistantIAView(ui.View):
         self.status.frame = (16, status_y, width - 32, STATUS_HEIGHT)
 
         self.toolbar.frame = (0, toolbar_y, width, TOOLBAR_HEIGHT)
-        self.new_button.frame = (10, 8, 78, 40)
-        self.web_button.frame = (94, 8, 112, 40)
-        self.write_button.frame = (212, 8, max(100, width - 222), 40)
+        self.new_button.frame = (10, 9, 82, 40)
+        self.web_button.frame = (98, 9, 118, 40)
+        self.write_button.frame = (222, 9, max(88, width - 232), 40)
 
         panel_w = width - 2 * MARGIN
         panel_y = TOP_SAFE + HEADER_HEIGHT + 14
@@ -189,7 +176,6 @@ class AssistantIAView(ui.View):
     def open_composer(self, sender: Any) -> None:
         if self.is_sending:
             return
-        self.composer_open = True
         self.composer_panel.hidden = False
         self.transcript_card.hidden = True
         self.status.text = "Saisissez votre message"
@@ -217,34 +203,29 @@ class AssistantIAView(ui.View):
             self.input.text = ""
         self.composer_panel.hidden = True
         self.transcript_card.hidden = False
-        self.composer_open = False
 
     def close_app(self, sender: Any) -> None:
+        """Ferme la vue racine selon l'API Pyto officielle."""
         self._close_composer(clear=False)
+
+        # Le bouton est enfant de header, lui-même enfant de la vue racine.
+        # Pyto recommande d'appeler close() sur la vue racine depuis l'action.
+        root = None
         try:
-            self.close()
+            root = sender.superview.superview
+        except Exception:
+            root = self
+
+        try:
+            root.close()
             return
-        except Exception:
-            pass
-        close_view = getattr(ui, "close_view", None)
-        if callable(close_view):
-            try:
-                close_view(self)
-                return
-            except Exception:
-                pass
-        try:
-            self.hidden = True
-            self.status.text = "Application fermée"
-        except Exception:
-            pass
+        except Exception as exc:
+            self.status.text = f"Impossible de fermer : {exc}"
 
     def toggle_web(self, sender: Any) -> None:
         self.web_enabled = not self.web_enabled
         self.web_button.title = "Web activé" if self.web_enabled else "Web désactivé"
-        self.status.text = (
-            "Recherche Web activée" if self.web_enabled else "Recherche Web désactivée"
-        )
+        self.status.text = "Recherche Web activée" if self.web_enabled else "Recherche Web désactivée"
 
     def new_conversation(self, sender: Any) -> None:
         if self.is_sending:
@@ -273,13 +254,7 @@ class AssistantIAView(ui.View):
         threading.Thread(target=self._send_worker, args=(text,), daemon=True).start()
 
     def _set_buttons_enabled(self, enabled: bool) -> None:
-        for button in (
-            self.send_button,
-            self.new_button,
-            self.web_button,
-            self.write_button,
-            self.close_button,
-        ):
+        for button in (self.send_button, self.new_button, self.web_button, self.write_button):
             try:
                 button.enabled = enabled
             except Exception:
@@ -315,9 +290,7 @@ class AssistantIAView(ui.View):
             messages.append({"role": "user", "content": extra_user})
         self.transcript.text = self._format_messages(messages)
         try:
-            self.transcript.scroll_range_to_visible(
-                max(0, len(self.transcript.text) - 1), 1
-            )
+            self.transcript.scroll_range_to_visible(max(0, len(self.transcript.text) - 1), 1)
         except Exception:
             pass
 
@@ -326,8 +299,8 @@ class AssistantIAView(ui.View):
         if not messages:
             return (
                 "Bienvenue dans AssistantIA v5.\n\n"
-                "Touchez « Écrire un message… » pour commencer.\n\n"
-                "Activez le Web uniquement lorsque vous avez besoin d’informations récentes."
+                "Touchez « Écrire… » pour commencer.\n\n"
+                "Activez le Web uniquement pour les informations récentes."
             )
         blocks: List[str] = []
         for message in messages:
@@ -342,9 +315,5 @@ class AssistantIAView(ui.View):
 def present() -> AssistantIAView:
     view = AssistantIAView()
     mode = getattr(ui, "PRESENTATION_MODE_FULLSCREEN", "fullscreen")
-    show_view = getattr(ui, "show_view", None)
-    if callable(show_view):
-        show_view(view, mode)
-    else:
-        raise RuntimeError("Cette version de Pyto ne fournit pas ui.show_view().")
+    ui.show_view(view, mode)
     return view
