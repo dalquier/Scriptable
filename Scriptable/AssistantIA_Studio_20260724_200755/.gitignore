@@ -1,0 +1,22 @@
+# Secrets
+projet/config.local.py
+.env
+*.env
+
+# Local databases and generated data
+projet/database/*.db
+projet/database/*.sqlite
+projet/database/*.sqlite3
+projet/data/*
+!projet/data/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Logs
+*.log
+
+# iOS/macOS
+.DS_Store
