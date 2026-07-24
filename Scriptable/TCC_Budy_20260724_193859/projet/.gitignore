@@ -1,0 +1,17 @@
+# Secrets
+.env
+secrets.py
+secrets.json
+
+# Python
+__pycache__/
+*.pyc
+
+# Données locales
+data/
+logs/
+backups/
+
+# macOS
+.DS_Store
+__MACOSX/
