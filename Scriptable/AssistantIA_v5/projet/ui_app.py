@@ -1,4 +1,8 @@
-"""Interface iPhone repensée pour AssistantIA v5."""
+"""Interface iPhone robuste pour AssistantIA v5.
+
+Cette version évite de placer la saisie derrière le clavier :
+la saisie s'effectue dans un panneau dédié situé dans la partie haute de l'écran.
+"""
 
 from __future__ import annotations
 
@@ -12,11 +16,10 @@ from app import AssistantIAApp
 from config import APP_NAME, APP_VERSION
 
 
-TOP_SAFE = 52
+TOP_SAFE = 54
 HEADER_HEIGHT = 58
-COMPOSER_HEIGHT = 78
-KEYBOARD_LIFT = 318
-BOTTOM_SAFE = 18
+BOTTOM_BAR_HEIGHT = 72
+STATUS_HEIGHT = 22
 
 
 def _color(name: str, fallback: Any = None) -> Any:
@@ -30,8 +33,12 @@ def _color(name: str, fallback: Any = None) -> Any:
 
 
 def _button(title: str, action: Any) -> Any:
+    button_type = getattr(ui, "BUTTON_TYPE_SYSTEM", None)
     try:
-        button = ui.Button(title=title)
+        if button_type is not None:
+            button = ui.Button(type=button_type, title=title)
+        else:
+            button = ui.Button(title=title)
     except Exception:
         button = ui.Button()
         button.title = title
@@ -39,33 +46,14 @@ def _button(title: str, action: Any) -> Any:
     return button
 
 
-class InputDelegate:
-    def __init__(self, owner: "AssistantIAView") -> None:
-        self.owner = owner
-
-    def text_view_did_begin_editing(self, text_view: Any) -> None:
-        self.owner.keyboard_visible = True
-        self.owner.layout()
-
-    def text_view_did_end_editing(self, text_view: Any) -> None:
-        self.owner.keyboard_visible = False
-        self.owner.layout()
-
-    def textview_did_begin_editing(self, text_view: Any) -> None:
-        self.text_view_did_begin_editing(text_view)
-
-    def textview_did_end_editing(self, text_view: Any) -> None:
-        self.text_view_did_end_editing(text_view)
-
-
 class AssistantIAView(ui.View):
     def __init__(self) -> None:
         super().__init__()
         self.title = APP_NAME
         self.background_color = _color("SYSTEM_BACKGROUND")
-        self.keyboard_visible = False
         self.web_enabled = False
         self.is_sending = False
+        self.composer_open = False
         self.app = AssistantIAApp()
         self._build_ui()
         try:
@@ -84,7 +72,7 @@ class AssistantIAView(ui.View):
         self.title_label.text_color = _color("LABEL")
         self.header.add_subview(self.title_label)
 
-        self.new_button = _button("＋", self.new_conversation)
+        self.new_button = _button("Nouveau", self.new_conversation)
         self.header.add_subview(self.new_button)
 
         self.web_button = _button("Web off", self.toggle_web)
@@ -100,51 +88,86 @@ class AssistantIAView(ui.View):
         self.status.text_color = _color("SECONDARY_LABEL")
         self.add_subview(self.status)
 
-        self.composer = ui.View()
-        self.composer.background_color = _color("SECONDARY_SYSTEM_BACKGROUND")
-        self.add_subview(self.composer)
+        self.bottom_bar = ui.View()
+        self.bottom_bar.background_color = _color("SECONDARY_SYSTEM_BACKGROUND")
+        self.add_subview(self.bottom_bar)
+
+        self.write_button = _button("Écrire un message…", self.open_composer)
+        self.bottom_bar.add_subview(self.write_button)
+
+        self.send_quick_button = _button("Envoyer", self.open_composer)
+        self.bottom_bar.add_subview(self.send_quick_button)
+
+        # Panneau de saisie placé dans la moitié haute de l'écran.
+        # Il reste visible même lorsque le clavier iOS est affiché.
+        self.composer_panel = ui.View()
+        self.composer_panel.background_color = _color("SECONDARY_SYSTEM_BACKGROUND")
+        self.composer_panel.hidden = True
+        self.add_subview(self.composer_panel)
+
+        self.composer_title = ui.Label(text="Nouveau message")
+        self.composer_title.text_color = _color("LABEL")
+        self.composer_panel.add_subview(self.composer_title)
 
         self.input = ui.TextView(text="")
         self.input.background_color = _color("TERTIARY_SYSTEM_BACKGROUND")
         self.input.text_color = _color("LABEL")
-        self.input_delegate = InputDelegate(self)
-        try:
-            self.input.delegate = self.input_delegate
-        except Exception:
-            pass
-        self.composer.add_subview(self.input)
+        self.composer_panel.add_subview(self.input)
+
+        self.cancel_button = _button("Annuler", self.cancel_composer)
+        self.composer_panel.add_subview(self.cancel_button)
 
         self.send_button = _button("Envoyer", self.send_message)
-        self.composer.add_subview(self.send_button)
-
-        self.hide_keyboard_button = _button("⌄", self.hide_keyboard)
-        self.composer.add_subview(self.hide_keyboard_button)
+        self.composer_panel.add_subview(self.send_button)
 
     def layout(self) -> None:
         width = max(320, self.width)
         height = max(480, self.height)
-        lift = KEYBOARD_LIFT if self.keyboard_visible else 0
-        header_y = TOP_SAFE
-        composer_y = height - COMPOSER_HEIGHT - BOTTOM_SAFE - lift
 
-        self.header.frame = (0, header_y, width, HEADER_HEIGHT)
-        self.title_label.frame = (16, 11, max(120, width - 190), 36)
-        self.web_button.frame = (width - 132, 10, 78, 38)
-        self.new_button.frame = (width - 48, 10, 38, 38)
+        self.header.frame = (0, TOP_SAFE, width, HEADER_HEIGHT)
+        self.title_label.frame = (16, 11, max(100, width - 220), 36)
+        self.web_button.frame = (width - 178, 10, 78, 38)
+        self.new_button.frame = (width - 96, 10, 86, 38)
 
-        transcript_y = header_y + HEADER_HEIGHT
-        status_h = 22
-        transcript_h = max(120, composer_y - transcript_y - status_h)
+        bottom_y = height - BOTTOM_BAR_HEIGHT
+        transcript_y = TOP_SAFE + HEADER_HEIGHT
+        transcript_h = max(120, bottom_y - transcript_y - STATUS_HEIGHT)
+
         self.transcript.frame = (10, transcript_y + 4, width - 20, transcript_h - 4)
-        self.status.frame = (16, transcript_y + transcript_h, width - 32, status_h)
+        self.status.frame = (16, transcript_y + transcript_h, width - 32, STATUS_HEIGHT)
 
-        self.composer.frame = (0, composer_y, width, COMPOSER_HEIGHT + BOTTOM_SAFE)
-        self.input.frame = (12, 10, max(120, width - 126), 56)
-        self.send_button.frame = (width - 104, 10, 92, 56)
-        self.hide_keyboard_button.frame = (width - 42, -34, 30, 30)
-        self.hide_keyboard_button.hidden = not self.keyboard_visible
+        self.bottom_bar.frame = (0, bottom_y, width, BOTTOM_BAR_HEIGHT)
+        self.write_button.frame = (12, 10, max(140, width - 118), 50)
+        self.send_quick_button.frame = (width - 96, 10, 84, 50)
 
-    def hide_keyboard(self, sender: Any) -> None:
+        panel_w = width - 24
+        panel_h = 230
+        panel_y = TOP_SAFE + HEADER_HEIGHT + 18
+        self.composer_panel.frame = (12, panel_y, panel_w, panel_h)
+        self.composer_title.frame = (14, 10, panel_w - 28, 30)
+        self.input.frame = (12, 46, panel_w - 24, 118)
+        self.cancel_button.frame = (12, 174, 92, 44)
+        self.send_button.frame = (panel_w - 104, 174, 92, 44)
+
+    def open_composer(self, sender: Any) -> None:
+        if self.is_sending:
+            return
+        self.composer_open = True
+        self.composer_panel.hidden = False
+        self.status.text = "Saisissez votre message"
+        try:
+            self.input.begin_editing()
+        except Exception:
+            try:
+                self.input.become_first_responder()
+            except Exception:
+                pass
+
+    def cancel_composer(self, sender: Any) -> None:
+        self._close_composer(clear=False)
+        self.status.text = "Prêt"
+
+    def _close_composer(self, clear: bool) -> None:
         try:
             self.input.end_editing()
         except Exception:
@@ -152,21 +175,28 @@ class AssistantIAView(ui.View):
                 self.input.resign_first_responder()
             except Exception:
                 pass
-        self.keyboard_visible = False
-        self.layout()
+        if clear:
+            self.input.text = ""
+        self.composer_panel.hidden = True
+        self.composer_open = False
 
     def toggle_web(self, sender: Any) -> None:
         self.web_enabled = not self.web_enabled
         self.web_button.title = "Web on" if self.web_enabled else "Web off"
-        self.status.text = "Recherche Web activée" if self.web_enabled else "Recherche Web désactivée"
+        self.status.text = (
+            "Recherche Web activée" if self.web_enabled else "Recherche Web désactivée"
+        )
 
     def new_conversation(self, sender: Any) -> None:
         if self.is_sending:
             return
-        self.app.new_conversation()
-        self.input.text = ""
-        self.status.text = "Nouvelle conversation"
-        self.refresh_messages()
+        self._close_composer(clear=True)
+        try:
+            self.app.new_conversation()
+            self.status.text = "Nouvelle conversation créée"
+            self.refresh_messages()
+        except Exception as exc:
+            self.status.text = f"Erreur nouvelle conversation : {exc}"
 
     def send_message(self, sender: Any) -> None:
         if self.is_sending:
@@ -175,10 +205,14 @@ class AssistantIAView(ui.View):
         if not text:
             self.status.text = "Saisissez un message."
             return
-        self.input.text = ""
+
+        self._close_composer(clear=True)
         self.is_sending = True
         self.send_button.enabled = False
         self.new_button.enabled = False
+        self.web_button.enabled = False
+        self.write_button.enabled = False
+        self.send_quick_button.enabled = False
         self.status.text = "AssistantIA réfléchit…"
         self.refresh_messages(extra_user=text)
         threading.Thread(target=self._send_worker, args=(text,), daemon=True).start()
@@ -196,6 +230,9 @@ class AssistantIAView(ui.View):
             self.is_sending = False
             self.send_button.enabled = True
             self.new_button.enabled = True
+            self.web_button.enabled = True
+            self.write_button.enabled = True
+            self.send_quick_button.enabled = True
             self.status.text = error or "Prêt"
             self.refresh_messages()
 
@@ -208,20 +245,25 @@ class AssistantIAView(ui.View):
                 pass
         finish()
 
-    def refresh_messages(self, extra_user: str | None = None) -> None:
+    def refresh_messages(self, extra_user: str = None) -> None:
         messages = list(self.app.get_messages())
         if extra_user:
             messages.append({"role": "user", "content": extra_user})
         self.transcript.text = self._format_messages(messages)
         try:
-            self.transcript.scroll_range_to_visible(max(0, len(self.transcript.text) - 1), 1)
+            self.transcript.scroll_range_to_visible(
+                max(0, len(self.transcript.text) - 1), 1
+            )
         except Exception:
             pass
 
     @staticmethod
     def _format_messages(messages: List[Dict[str, Any]]) -> str:
         if not messages:
-            return "Bienvenue dans AssistantIA v5.\n\nÉcrivez votre message dans la barre située en bas de l’écran."
+            return (
+                "Bienvenue dans AssistantIA v5.\n\n"
+                "Touchez « Écrire un message… » pour commencer."
+            )
         blocks: List[str] = []
         for message in messages:
             role = message.get("role")
