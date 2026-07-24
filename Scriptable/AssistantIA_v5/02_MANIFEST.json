@@ -1,0 +1,27 @@
+{
+  "project_name": "AssistantIA",
+  "version": "5.0.0",
+  "repository": "dalquier/Scriptable",
+  "branch": "main",
+  "root_folder": "Scriptable/AssistantIA_v5",
+  "entrypoint": "projet/main.py",
+  "files": [
+    "00_README.md",
+    "01_ARBORESCENCE.md",
+    "02_MANIFEST.json",
+    "03_INSTALLATION.md",
+    "04_CHANGELOG.md",
+    ".gitignore",
+    "projet/main.py",
+    "projet/diagnostic.py",
+    "projet/ui_app.py",
+    "projet/app.py",
+    "projet/conversation.py",
+    "projet/storage.py",
+    "projet/api_client.py",
+    "projet/config.py",
+    "projet/config_local.example.py",
+    "projet/data/.gitkeep",
+    "projet/database/.gitkeep"
+  ]
+}
