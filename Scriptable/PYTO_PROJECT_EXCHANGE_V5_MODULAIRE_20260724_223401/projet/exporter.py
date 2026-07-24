@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
-from config import (
+from ppx_config import (
     EXCLUDED_DIR_NAMES,
     EXCLUDED_FILE_NAMES,
     FILE_BEGIN,
@@ -18,7 +18,7 @@ from config import (
     TARGET_PART_CHARACTERS,
     TEXT_EXTENSIONS,
 )
-from utils import encode_base64, json_dumps, read_bytes, sha256_bytes, sha256_text, split_text
+from ppx_utils import encode_base64, json_dumps, read_bytes, sha256_bytes, sha256_text, split_text
 
 
 class ExportError(Exception):
