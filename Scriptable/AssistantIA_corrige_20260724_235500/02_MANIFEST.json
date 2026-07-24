@@ -1,0 +1,28 @@
+{
+  "project_name": "AssistantIA_corrige",
+  "version": "3.1.0",
+  "generated_at": "2026-07-24T23:55:00+02:00",
+  "repository": "dalquier/Scriptable",
+  "branch": "main",
+  "root_folder": "Scriptable/AssistantIA_corrige_20260724_235500",
+  "entrypoint": "projet/main.py",
+  "files": [
+    {"path": "00_README.md", "type": "markdown", "required": true, "description": "Présentation du projet"},
+    {"path": "01_ARBORESCENCE.md", "type": "markdown", "required": true, "description": "Arborescence exacte"},
+    {"path": "02_MANIFEST.json", "type": "json", "required": true, "description": "Manifeste de livraison"},
+    {"path": "03_INSTALLATION.md", "type": "markdown", "required": true, "description": "Guide d'installation"},
+    {"path": "04_CHANGELOG.md", "type": "markdown", "required": true, "description": "Historique des corrections"},
+    {"path": ".gitignore", "type": "text", "required": true, "description": "Exclusions Git"},
+    {"path": "projet/main.py", "type": "python", "required": true, "description": "Point d'entrée principal"},
+    {"path": "projet/diagnostic.py", "type": "python", "required": true, "description": "Diagnostic Pyto"},
+    {"path": "projet/ui_app.py", "type": "python", "required": true, "description": "Interface Pyto"},
+    {"path": "projet/app.py", "type": "python", "required": true, "description": "Noyau applicatif"},
+    {"path": "projet/conversation.py", "type": "python", "required": true, "description": "Gestion des conversations"},
+    {"path": "projet/storage.py", "type": "python", "required": true, "description": "Persistance SQLite"},
+    {"path": "projet/api_client.py", "type": "python", "required": true, "description": "Client OpenAI Responses"},
+    {"path": "projet/config.py", "type": "python", "required": true, "description": "Configuration publique"},
+    {"path": "projet/config_local.example.py", "type": "python", "required": true, "description": "Exemple de configuration privée"},
+    {"path": "projet/data/.gitkeep", "type": "text", "required": false, "description": "Conservation du dossier data"},
+    {"path": "projet/database/.gitkeep", "type": "text", "required": false, "description": "Conservation du dossier database"}
+  ]
+}
