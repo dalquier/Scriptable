@@ -1,0 +1,58 @@
+{
+  "project_name": "Pyto_Project_Exchange_V5",
+  "generated_at": "2026-07-24T19:40:03+02:00",
+  "repository": "dalquier/Scriptable",
+  "branch": "main",
+  "root_folder": "Scriptable/Pyto_Project_Exchange_V5_20260724_194003",
+  "entrypoint": "projet/main.py",
+  "files": [
+    {
+      "path": "00_README.md",
+      "type": "markdown",
+      "required": true,
+      "description": "Présentation et démarrage"
+    },
+    {
+      "path": "01_ARBORESCENCE.md",
+      "type": "markdown",
+      "required": true,
+      "description": "Arborescence exacte de la livraison"
+    },
+    {
+      "path": "02_MANIFEST.json",
+      "type": "json",
+      "required": true,
+      "description": "Manifeste de la livraison"
+    },
+    {
+      "path": "03_INSTALLATION.md",
+      "type": "markdown",
+      "required": true,
+      "description": "Installation sous iOS, Working Copy et Pyto"
+    },
+    {
+      "path": "04_CHANGELOG.md",
+      "type": "markdown",
+      "required": true,
+      "description": "Historique de la version 5"
+    },
+    {
+      "path": "projet/main.py",
+      "type": "python",
+      "required": true,
+      "description": "Application Pyto Project Exchange 5.0"
+    },
+    {
+      "path": "projet/PROMPT_CHATGPT.md",
+      "type": "markdown",
+      "required": true,
+      "description": "Prompt principal du protocole PPE5"
+    },
+    {
+      "path": "projet/PROMPT_CONVERSATION_EXISTANTE.md",
+      "type": "markdown",
+      "required": true,
+      "description": "Prompt pour imposer PPE5 dans une conversation existante"
+    }
+  ]
+}
