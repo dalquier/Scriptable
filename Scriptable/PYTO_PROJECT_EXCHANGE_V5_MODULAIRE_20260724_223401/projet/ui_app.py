@@ -3,7 +3,7 @@ from __future__ import annotations
 import pyto_ui as ui
 
 from app_controller import AppController
-from config import APP_TITLE
+from ppx_config import APP_TITLE
 
 
 class MainUI:
