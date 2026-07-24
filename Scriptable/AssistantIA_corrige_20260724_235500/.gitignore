@@ -1,0 +1,9 @@
+config_local.py
+.env
+secrets.py
+secrets.json
+__pycache__/
+*.pyc
+projet/database/*.sqlite3
+projet/data/*
+!projet/data/.gitkeep
