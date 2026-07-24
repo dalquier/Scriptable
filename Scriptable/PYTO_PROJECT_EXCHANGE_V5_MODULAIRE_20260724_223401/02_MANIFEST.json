@@ -1,0 +1,100 @@
+{
+  "project_name": "PYTO_PROJECT_EXCHANGE_V5_MODULAIRE",
+  "generated_at": "2026-07-24T22:34:01+02:00",
+  "repository": "dalquier/Scriptable",
+  "branch": "main",
+  "root_folder": "Scriptable/PYTO_PROJECT_EXCHANGE_V5_MODULAIRE_20260724_223401",
+  "entrypoint": "projet/main.py",
+  "files": [
+    {
+      "path": "00_README.md",
+      "type": "markdown",
+      "required": true,
+      "description": "Présentation et instructions de démarrage"
+    },
+    {
+      "path": "01_ARBORESCENCE.md",
+      "type": "markdown",
+      "required": true,
+      "description": "Arborescence exacte de la livraison"
+    },
+    {
+      "path": "02_MANIFEST.json",
+      "type": "json",
+      "required": true,
+      "description": "Manifeste canonique de la livraison"
+    },
+    {
+      "path": "03_INSTALLATION.md",
+      "type": "markdown",
+      "required": true,
+      "description": "Installation et diagnostic sous iOS et Pyto"
+    },
+    {
+      "path": "04_CHANGELOG.md",
+      "type": "markdown",
+      "required": true,
+      "description": "Historique de la livraison"
+    },
+    {
+      "path": "projet/.gitignore",
+      "type": "text",
+      "required": true,
+      "description": "Exclusion des secrets et fichiers temporaires"
+    },
+    {
+      "path": "projet/app_controller.py",
+      "type": "python",
+      "required": true,
+      "description": "Contrôleur des actions de l’interface"
+    },
+    {
+      "path": "projet/config.py",
+      "type": "python",
+      "required": true,
+      "description": "Configuration du protocole et des exclusions"
+    },
+    {
+      "path": "projet/exporter.py",
+      "type": "python",
+      "required": true,
+      "description": "Moteur d’export Markdown multipartie"
+    },
+    {
+      "path": "projet/file_picker.py",
+      "type": "python",
+      "required": true,
+      "description": "Sélection de dossiers compatible Pyto"
+    },
+    {
+      "path": "projet/importer.py",
+      "type": "python",
+      "required": true,
+      "description": "Moteur d’import et de reconstruction"
+    },
+    {
+      "path": "projet/main.py",
+      "type": "python",
+      "required": true,
+      "description": "Point d’entrée principal"
+    },
+    {
+      "path": "projet/prompts.py",
+      "type": "python",
+      "required": true,
+      "description": "Prompts ChatGPT V5 et migration"
+    },
+    {
+      "path": "projet/ui_app.py",
+      "type": "python",
+      "required": true,
+      "description": "Interface utilisateur Pyto"
+    },
+    {
+      "path": "projet/utils.py",
+      "type": "python",
+      "required": true,
+      "description": "Utilitaires de sécurité, hachage et encodage"
+    }
+  ]
+}
