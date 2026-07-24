@@ -215,10 +215,34 @@ class AssistantIAView(ui.View):
 
 
 def present() -> AssistantIAView:
+    """Affiche la vue avec l'API réellement fournie par Pyto.
+
+    Les versions actuelles de Pyto exposent généralement ui.show_view(view, mode)
+    et non view.present(...). Le repli vers present est conservé pour les anciennes
+    variantes de pyto_ui.
+    """
     view = AssistantIAView()
     mode = _presentation_fullscreen()
-    try:
-        view.present(mode)
-    except TypeError:
-        view.present(presentation_mode=mode)
-    return view
+
+    show_view = getattr(ui, "show_view", None)
+    if callable(show_view):
+        try:
+            show_view(view, mode)
+        except TypeError:
+            try:
+                show_view(view, presentation_mode=mode)
+            except TypeError:
+                show_view(view)
+        return view
+
+    present_method = getattr(view, "present", None)
+    if callable(present_method):
+        try:
+            present_method(mode)
+        except TypeError:
+            present_method(presentation_mode=mode)
+        return view
+
+    raise RuntimeError(
+        "Impossible d'afficher l'interface : pyto_ui ne fournit ni show_view ni present."
+    )
