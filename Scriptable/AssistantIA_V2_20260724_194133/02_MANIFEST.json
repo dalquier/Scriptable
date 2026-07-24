@@ -1,0 +1,31 @@
+{
+  "project_name": "AssistantIA_V2",
+  "generated_at": "2026-07-24T19:41:33+02:00",
+  "repository": "dalquier/Scriptable",
+  "branch": "main",
+  "root_folder": "Scriptable/AssistantIA_V2_20260724_194133",
+  "entrypoint": "projet/main.py",
+  "files": [
+    {"path":"00_README.md","type":"markdown","required":true,"description":"Présentation générale de la livraison"},
+    {"path":"01_ARBORESCENCE.md","type":"markdown","required":true,"description":"Arborescence exacte de la livraison"},
+    {"path":"02_MANIFEST.json","type":"json","required":true,"description":"Manifeste de la livraison"},
+    {"path":"03_INSTALLATION.md","type":"markdown","required":true,"description":"Guide d’installation iOS, Working Copy et Pyto"},
+    {"path":"04_CHANGELOG.md","type":"markdown","required":true,"description":"Historique de la livraison"},
+    {"path":"projet/main.py","type":"python","required":true,"description":"Point d’entrée principal"},
+    {"path":"projet/config.py","type":"python","required":true,"description":"Configuration générale et OpenAI"},
+    {"path":"projet/api_client.py","type":"python","required":true,"description":"Client OpenAI Responses API avec recherche Web"},
+    {"path":"projet/storage.py","type":"python","required":true,"description":"Stockage local JSON et SQLite"},
+    {"path":"projet/conversation.py","type":"python","required":true,"description":"Gestion des messages et conversations"},
+    {"path":"projet/models.py","type":"python","required":true,"description":"Structures de données du projet"},
+    {"path":"projet/theme.py","type":"python","required":true,"description":"Palette et constantes d’interface"},
+    {"path":"projet/ui_app.py","type":"python","required":true,"description":"Interface principale Pyto"},
+    {"path":"projet/knowledge_base.py","type":"python","required":true,"description":"Orchestration de la base documentaire RAG"},
+    {"path":"projet/document_index.py","type":"python","required":true,"description":"Index SQLite et recherche documentaire"},
+    {"path":"projet/document_extractors.py","type":"python","required":true,"description":"Extraction de texte multi-formats"},
+    {"path":"projet/embeddings.py","type":"python","required":true,"description":"Appels à l’API OpenAI Embeddings"},
+    {"path":"projet/chunker.py","type":"python","required":true,"description":"Découpage des documents en passages"},
+    {"path":"projet/file_import.py","type":"python","required":true,"description":"Import de fichiers depuis l’app Fichiers"},
+    {"path":"projet/default_settings.json","type":"json","required":true,"description":"Paramètres par défaut"},
+    {"path":"projet/.gitignore","type":"text","required":true,"description":"Exclusion des secrets et caches"}
+  ]
+}
