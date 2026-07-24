@@ -1,0 +1,6 @@
+projet/config_local.py
+projet/database/*.sqlite3
+projet/database/*.db
+__pycache__/
+*.pyc
+.DS_Store
