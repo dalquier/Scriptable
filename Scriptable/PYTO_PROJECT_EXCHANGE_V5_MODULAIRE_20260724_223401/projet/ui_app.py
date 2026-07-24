@@ -6,14 +6,31 @@ from app_controller import AppController
 from ppx_config import APP_TITLE
 
 
+def _system_color(name: str, legacy_name: str):
+    palette = getattr(ui, "SystemColors", None)
+    if palette is not None and hasattr(palette, name):
+        return getattr(palette, name)
+    return getattr(ui, legacy_name)
+
+
+def _sheet_presentation_mode():
+    modes = getattr(ui, "PresentationMode", None)
+    if modes is not None and hasattr(modes, "SHEET"):
+        return modes.SHEET
+    return getattr(ui, "PRESENTATION_MODE_SHEET")
+
+
 class MainUI:
     def __init__(self):
         self.view = ui.View()
-        self.view.background_color = ui.COLOR_SYSTEM_BACKGROUND
+        self.view.background_color = _system_color("SYSTEM_BACKGROUND", "COLOR_SYSTEM_BACKGROUND")
         self.view.title = APP_TITLE
+
+        # Les références sont conservées pendant toute la durée de la vue.
         self._callbacks = []
-        self._build()
         self.controller = AppController(self)
+
+        self._build()
         self._bind_actions()
 
     def _build(self):
@@ -53,8 +70,8 @@ class MainUI:
         button.title = title
         button.frame = (35, y, 330, 48)
         button.corner_radius = 12
-        button.background_color = ui.COLOR_SYSTEM_BLUE
-        button.tint_color = ui.COLOR_WHITE
+        button.background_color = _system_color("SYSTEM_BLUE", "COLOR_SYSTEM_BLUE")
+        button.tint_color = _system_color("WHITE", "COLOR_WHITE")
         self.view.add_subview(button)
         return button
 
@@ -65,6 +82,7 @@ class MainUI:
             (self.prompt_button, self.controller.copy_prompt_action),
             (self.migration_button, self.controller.copy_migration_action),
         ]
+
         for button, callback in bindings:
             self._callbacks.append(callback)
             button.action = callback
@@ -86,4 +104,4 @@ class MainUI:
         ui.Pasteboard.string = text
 
     def present(self):
-        ui.show_view(self.view, ui.PRESENTATION_MODE_SHEET)
+        ui.show_view(self.view, _sheet_presentation_mode())
