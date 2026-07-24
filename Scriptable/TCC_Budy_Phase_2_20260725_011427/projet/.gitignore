@@ -1,0 +1,14 @@
+.env
+config.json
+secrets.py
+secrets.json
+__pycache__/
+*.pyc
+*.pyo
+*.sqlite
+*.sqlite3
+*.db
+*.log
+data/
+logs/
+.DS_Store
