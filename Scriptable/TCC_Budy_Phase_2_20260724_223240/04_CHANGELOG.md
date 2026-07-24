@@ -1,5 +1,31 @@
 # Changelog
 
+## Correctif de configuration autonome — 25 juillet 2026
+
+### Fichiers modifiés
+
+- `projet/tcc_budy/support/config.py`
+- `projet/config.example.json`
+- `03_INSTALLATION.md`
+- `04_CHANGELOG.md`
+
+### Corrections
+
+- suppression de la dépendance d’exécution à `config.example.json` ;
+- création automatique de `config.json` au premier lancement ;
+- démarrage automatique avec le simulateur lorsqu’aucune clé OpenAI n’est présente ;
+- activation automatique d’OpenAI lorsqu’une clé valide existe dans `secrets.json` ;
+- prise en charge de `OPENAI_MODEL` dans `secrets.json` ;
+- validation renforcée du contenu JSON et messages d’erreur plus précis ;
+- conservation de `config.example.json` comme documentation uniquement.
+
+### Compatibilité
+
+- aucun changement du schéma SQLite ;
+- aucune migration de données ;
+- les valeurs `provider: simulator` et `provider: openai` restent acceptées ;
+- la nouvelle valeur recommandée est `provider: auto`.
+
 ## Phase 2 — 24 juillet 2026
 
 ### Version précédente identifiable
@@ -39,5 +65,4 @@ Tous les scripts du projet ont été recréés dans cette livraison horodatée.
 ### Incompatibilités et migrations
 
 - aucune migration de schéma supplémentaire ; le schéma SQLite v1 est conservé ;
-- le fournisseur reçoit désormais une liste de messages et non un texte isolé ;
-- `config.json` et `secrets.json` doivent être créés localement.
+- le fournisseur reçoit désormais une liste de messages et non un texte isolé.
