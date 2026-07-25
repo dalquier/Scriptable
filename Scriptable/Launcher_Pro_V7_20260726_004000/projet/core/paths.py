@@ -5,6 +5,7 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT_DIR / "data"
 SCRIPTS_DIR = DATA_DIR / "scripts"
+PROJECTS_DIR = DATA_DIR / "projects"
 LOGS_DIR = DATA_DIR / "logs"
 BACKUPS_DIR = DATA_DIR / "backups"
 REGISTRY_FILE = DATA_DIR / "registry.json"
@@ -14,5 +15,11 @@ LOG_FILE = LOGS_DIR / "launcher.log"
 
 
 def ensure_directories() -> None:
-    for path in (DATA_DIR, SCRIPTS_DIR, LOGS_DIR, BACKUPS_DIR):
+    for path in (
+        DATA_DIR,
+        SCRIPTS_DIR,
+        PROJECTS_DIR,
+        LOGS_DIR,
+        BACKUPS_DIR,
+    ):
         path.mkdir(parents=True, exist_ok=True)
