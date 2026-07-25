@@ -9,58 +9,80 @@ from pathlib import Path
 import widgets as wd
 
 
-def _bootstrap_project_path() -> Path:
-    """Ajoute la racine Launcher Pro au chemin Python du widget.
+def _safe_directory(value) -> Path | None:
+    """Convertit un chemin en dossier sans parcourir ses parents.
 
-    Pyto exécute parfois les widgets avec un répertoire courant différent du
-    dossier du script. On recherche donc la racine à partir de plusieurs chemins
-    fiables avant d'importer le package ``core``.
+    L’extension Widget de Pyto n’a pas le droit d’énumérer librement iCloud Drive.
+    Toute recherche récursive ou tout parcours de ``Path.parents`` peut donc lever
+    ``Operation not permitted``.
+    """
+    if not value:
+        return None
+    try:
+        path = Path(str(value)).expanduser()
+        if path.suffix.lower() == ".py":
+            path = path.parent
+        return path
+    except Exception:
+        return None
+
+
+def _bootstrap_project_path() -> Path:
+    """Ajoute uniquement le dossier exact du script widget à ``sys.path``.
+
+    Aucun dossier iCloud parent n’est exploré. Le widget doit rester directement
+    dans le même dossier que ``LauncherPro.py``, ``core/``, ``ui/`` et ``data/``.
     """
     candidates: list[Path] = []
 
+    # Dans le contexte Widget, script_path est généralement la source la plus fiable.
     try:
-        candidates.append(Path(__file__).resolve().parent)
+        candidate = _safe_directory(getattr(threading.current_thread(), "script_path", None))
+        if candidate is not None:
+            candidates.append(candidate)
     except Exception:
         pass
 
+    # __file__ fonctionne lorsque Pyto conserve le chemin original du script.
     try:
-        script_path = getattr(threading.current_thread(), "script_path", None)
-        if script_path:
-            candidates.append(Path(script_path).resolve().parent)
+        candidate = _safe_directory(globals().get("__file__"))
+        if candidate is not None:
+            candidates.append(candidate)
     except Exception:
         pass
 
-    try:
-        candidates.append(Path.cwd().resolve())
-    except Exception:
-        pass
-
-    # Certains contextes de widget démarrent dans un sous-dossier temporaire.
-    expanded: list[Path] = []
-    for candidate in candidates:
-        expanded.append(candidate)
-        expanded.extend(list(candidate.parents)[:5])
-
+    # Évite Path.cwd().resolve() et Path.parents : ils peuvent traverser un dossier
+    # Mobile Documents interdit à l’extension Widget.
     seen: set[str] = set()
-    for candidate in expanded:
+    errors: list[str] = []
+    for candidate in candidates:
         key = str(candidate)
         if key in seen:
             continue
         seen.add(key)
-        if (candidate / "core" / "__init__.py").exists():
-            if key not in sys.path:
-                sys.path.insert(0, key)
-            try:
-                os.chdir(candidate)
-            except OSError:
-                pass
-            return candidate
+        try:
+            marker = candidate / "core" / "__init__.py"
+            if marker.is_file():
+                if key not in sys.path:
+                    sys.path.insert(0, key)
+                try:
+                    os.chdir(key)
+                except OSError:
+                    pass
+                return candidate
+        except OSError as exc:
+            errors.append(f"{key}: {exc}")
+        except Exception as exc:
+            errors.append(f"{key}: {type(exc).__name__}: {exc}")
 
-    searched = "\n".join(f"- {path}" for path in candidates) or "- aucun chemin détecté"
+    details = "\n".join(f"- {path}" for path in candidates) or "- aucun chemin fourni par Pyto"
+    if errors:
+        details += "\n\nErreurs :\n" + "\n".join(f"- {error}" for error in errors)
     raise ModuleNotFoundError(
-        "Le dossier Launcher Pro V7 n'a pas été trouvé. "
-        "Place launcher_widget.py dans le même dossier que LauncherPro.py et le dossier core.\n\n"
-        f"Chemins examinés :\n{searched}"
+        "Launcher Pro V7 est inaccessible depuis le widget. "
+        "Place launcher_widget.py directement dans le même dossier que "
+        "LauncherPro.py et le dossier core, puis réexécute le script une fois.\n\n"
+        f"Chemins directs examinés :\n{details}"
     )
 
 
@@ -70,7 +92,6 @@ from core.registry import Registry
 from core.url_scheme import run_by_id
 
 BACKGROUND = wd.Color.rgb(12 / 255, 14 / 255, 20 / 255)
-CARD = wd.Color.rgb(29 / 255, 33 / 255, 44 / 255)
 PRIMARY = wd.Color.rgb(72 / 255, 139 / 255, 1)
 TEXT = wd.Color.rgb(1, 1, 1)
 MUTED = wd.Color.rgb(174 / 255, 180 / 255, 194 / 255)
@@ -147,7 +168,6 @@ class LauncherProvider(wd.TimelineProvider):
 def handle_link(value: str) -> None:
     if value == "open":
         from ui.main_view import present_launcher
-
         present_launcher()
         return
 
