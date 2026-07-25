@@ -17,7 +17,7 @@ def validate_python_file(path: str | Path) -> Path:
     if not source.exists() or not source.is_file():
         raise FileNotFoundError(f"Fichier introuvable : {source}")
     if source.suffix.lower() != ".py":
-        raise ValueError("Le fichier sélectionné doit avoir l'extension .py")
+        raise ValueError("Le fichier sélectionné doit avoir l’extension .py")
     text = source.read_text(encoding="utf-8-sig", errors="strict")
     ast.parse(text, filename=str(source))
     return source
@@ -60,45 +60,39 @@ def import_script(
     return entry
 
 
-def pick_python_file() -> str:
-    """Sélectionne un script Python avec l'API officielle de Pyto.
-
-    La sélection directe filtre explicitement l'extension ``py``. Si le
-    fournisseur iOS refuse ce type de fichier, l'appelant peut utiliser
-    ``pick_python_file_from_directory`` comme solution de secours.
-    """
+def _file_system_module():
     try:
         import file_system  # type: ignore
     except ImportError as exc:
-        raise RuntimeError(
-            "Le sélecteur iOS nécessite Pyto et son module file_system"
-        ) from exc
+        raise RuntimeError("Le sélecteur iOS nécessite le module file_system de Pyto") from exc
+    return file_system
 
+
+def pick_python_file() -> str:
+    """Ouvre une seule fois le sélecteur iOS et valide le fichier choisi.
+
+    ``public.data`` est utilisé volontairement : certains fournisseurs iOS
+    grisent les fichiers .py lorsque le filtre d’extension est trop strict.
+    La validation Python est faite après la sélection.
+    """
+    file_system = _file_system_module()
     importer = getattr(file_system, "import_file", None)
     if not callable(importer):
         raise RuntimeError("Cette version de Pyto ne fournit pas file_system.import_file")
 
-    attempts = (
-        {"multiple_selection": False, "file_extension": "py"},
-        {"multiple_selection": False, "type_identifier": "public.python-script"},
-        {"multiple_selection": False, "type_identifier": "public.source-code"},
-        {"multiple_selection": False},
-    )
-    last_error: Optional[Exception] = None
+    try:
+        result = importer(
+            multiple_selection=False,
+            type_identifier="public.data",
+        )
+    except TypeError:
+        result = importer(False)
 
-    for kwargs in attempts:
-        try:
-            result = importer(**kwargs)
-            if isinstance(result, (list, tuple)):
-                result = result[0] if result else None
-            if result:
-                return str(validate_python_file(result))
-        except Exception as exc:
-            last_error = exc
-
-    if last_error:
-        raise RuntimeError(f"Sélection impossible : {last_error}") from last_error
-    raise RuntimeError("Aucun fichier Python n'a été sélectionné")
+    if isinstance(result, (list, tuple)):
+        result = result[0] if result else None
+    if not result:
+        raise RuntimeError("Aucun fichier n’a été sélectionné")
+    return str(validate_python_file(result))
 
 
 def list_python_files(directory: str | Path, recursive: bool = True) -> list[Path]:
@@ -112,20 +106,19 @@ def list_python_files(directory: str | Path, recursive: bool = True) -> list[Pat
     )
 
 
-def pick_python_file_from_directory() -> list[Path]:
-    """Ouvre le sélecteur de dossier et renvoie les scripts détectés."""
-    try:
-        import file_system  # type: ignore
-    except ImportError as exc:
-        raise RuntimeError(
-            "Le sélecteur iOS nécessite Pyto et son module file_system"
-        ) from exc
-
+def pick_python_directory() -> str:
+    file_system = _file_system_module()
     picker = getattr(file_system, "pick_directory", None)
     if not callable(picker):
         raise RuntimeError("Cette version de Pyto ne permet pas de choisir un dossier")
-
     directory = picker()
+    if not directory:
+        raise RuntimeError("Aucun dossier n’a été sélectionné")
+    return str(Path(directory).expanduser().resolve())
+
+
+def pick_python_file_from_directory() -> list[Path]:
+    directory = pick_python_directory()
     files = list_python_files(directory, recursive=True)
     if not files:
         raise FileNotFoundError("Aucun fichier .py trouvé dans le dossier sélectionné")
