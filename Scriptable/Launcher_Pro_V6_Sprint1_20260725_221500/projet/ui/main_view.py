@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import threading
+import time
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -17,85 +18,114 @@ from . import theme
 
 
 class LauncherProView:
-    """Interface native Pyto, pensée comme une application iPhone."""
+    """Interface native Pyto présentée comme une feuille d’application iOS."""
 
     def __init__(self) -> None:
         self.registry = Registry.load()
         self.cards: List[Dict[str, object]] = []
         self.query = ""
         self.busy = False
+        self.is_presented = False
 
         self.view = ui.View()
         self.view.title = theme.TITLE
         self.view.background_color = theme.BACKGROUND
         self.view.layout = self.layout
 
-        # En-tête principal
-        self.hero = ui.View()
-        self.hero.background_color = theme.CARD
-        self.hero.corner_radius = 24
+        # Barre d’application
+        self.top_bar = ui.View()
+        self.top_bar.background_color = theme.CARD
+        self.top_bar.corner_radius = 20
 
-        self.app_icon = self._label("▶︎", 25, True, theme.TEXT)
-        self.app_icon.background_color = theme.PRIMARY
-        self.app_icon.corner_radius = 15
-        self.app_icon.text_alignment = ui.TEXT_ALIGNMENT_CENTER
+        self.logo = self._label("▶︎", 21, True, theme.TEXT)
+        self.logo.background_color = theme.PRIMARY
+        self.logo.corner_radius = 13
+        self.logo.text_alignment = ui.TEXT_ALIGNMENT_CENTER
 
-        self.title = self._label(theme.TITLE, 28, True, theme.TEXT)
-        self.subtitle = self._label(
-            "Lance tes automatisations en un geste",
-            14,
+        self.app_name = self._label("Launcher Pro", 23, True, theme.TEXT)
+        self.app_caption = self._label(
+            "Bibliothèque de scripts Python",
+            12,
             False,
             theme.SECONDARY_TEXT,
         )
 
-        self.quit_button = ui.Button(title="Quitter")
+        self.quit_button = ui.Button(title="Fermer")
         self.quit_button.action = self.on_quit
         self.quit_button.background_color = theme.CARD_ALT
         self.quit_button.tint_color = theme.DANGER
-        self.quit_button.corner_radius = 13
+        self.quit_button.corner_radius = 12
 
-        for item in (self.app_icon, self.title, self.subtitle, self.quit_button):
-            self.hero.add_subview(item)
+        for child in (self.logo, self.app_name, self.app_caption, self.quit_button):
+            self.top_bar.add_subview(child)
 
-        # Statistiques
-        self.stats_bar = ui.View()
-        self.stats_bar.background_color = theme.CARD
-        self.stats_bar.corner_radius = 18
-        self.stat_scripts = self._stat_block("0", "Scripts")
-        self.stat_favorites = self._stat_block("0", "Favoris")
-        self.stat_runs = self._stat_block("0", "Lancements")
-        for block in (self.stat_scripts, self.stat_favorites, self.stat_runs):
-            self.stats_bar.add_subview(block["container"])
+        # Panneau de synthèse
+        self.summary = ui.View()
+        self.summary.background_color = theme.PRIMARY_SOFT
+        self.summary.corner_radius = 20
 
-        # Recherche et actions
-        self.search = ui.TextField(placeholder="Rechercher un script ou une catégorie")
+        self.summary_title = self._label(
+            "Tes automatisations, au même endroit",
+            18,
+            True,
+            theme.TEXT,
+        )
+        self.summary_text = self._label(
+            "Ajoute un script, organise-le et lance-le en un geste.",
+            12,
+            False,
+            theme.SECONDARY_TEXT,
+        )
+        self.stat_scripts = self._pill("0", "scripts")
+        self.stat_favorites = self._pill("0", "favoris")
+        self.stat_runs = self._pill("0", "lancements")
+
+        for child in (
+            self.summary_title,
+            self.summary_text,
+            self.stat_scripts["container"],
+            self.stat_favorites["container"],
+            self.stat_runs["container"],
+        ):
+            self.summary.add_subview(child)
+
+        # Actions
+        self.search = ui.TextField(placeholder="Rechercher")
         self.search.did_change = self.on_search
         self.search.background_color = theme.CARD
         self.search.text_color = theme.TEXT
-        self.search.corner_radius = 15
+        self.search.corner_radius = 14
 
-        self.add_button = ui.Button(title="＋ Ajouter un script")
-        self.add_button.action = self.on_add
-        self.add_button.background_color = theme.PRIMARY
-        self.add_button.tint_color = theme.TEXT
-        self.add_button.corner_radius = 15
+        self.add_file_button = ui.Button(title="＋ Fichier")
+        self.add_file_button.action = self.on_add_file
+        self.add_file_button.background_color = theme.PRIMARY
+        self.add_file_button.tint_color = theme.TEXT
+        self.add_file_button.corner_radius = 14
 
-        self.section_title = self._label("Mes scripts", 20, True, theme.TEXT)
-        self.status = self._label("Prêt", 13, False, theme.SECONDARY_TEXT)
+        self.add_folder_button = ui.Button(title="Dossier")
+        self.add_folder_button.action = self.on_add_folder
+        self.add_folder_button.background_color = theme.CARD
+        self.add_folder_button.tint_color = theme.PRIMARY
+        self.add_folder_button.corner_radius = 14
+
+        self.section_title = self._label("Mes scripts", 18, True, theme.TEXT)
+        self.status = self._label("Prêt", 12, False, theme.SECONDARY_TEXT)
+        self.status.text_alignment = ui.TEXT_ALIGNMENT_RIGHT
 
         self.scroll = ui.ScrollView()
         self.scroll.background_color = theme.BACKGROUND
 
-        for control in (
-            self.hero,
-            self.stats_bar,
+        for child in (
+            self.top_bar,
+            self.summary,
             self.search,
-            self.add_button,
+            self.add_file_button,
+            self.add_folder_button,
             self.section_title,
             self.status,
             self.scroll,
         ):
-            self.view.add_subview(control)
+            self.view.add_subview(child)
 
         self.refresh()
 
@@ -108,11 +138,13 @@ class LauncherProView:
             label.font = selected_font
         return label
 
-    def _stat_block(self, value: str, caption: str) -> Dict[str, object]:
+    def _pill(self, value: str, caption: str) -> Dict[str, object]:
         container = ui.View()
-        value_label = self._label(value, 21, True, theme.TEXT)
+        container.background_color = theme.CARD
+        container.corner_radius = 12
+        value_label = self._label(value, 16, True, theme.TEXT)
+        caption_label = self._label(caption, 10, False, theme.SECONDARY_TEXT)
         value_label.text_alignment = ui.TEXT_ALIGNMENT_CENTER
-        caption_label = self._label(caption, 11, False, theme.SECONDARY_TEXT)
         caption_label.text_alignment = ui.TEXT_ALIGNMENT_CENTER
         container.add_subview(value_label)
         container.add_subview(caption_label)
@@ -122,51 +154,54 @@ class LauncherProView:
         width = self.view.width
         height = self.view.height
         margin = 16
-        usable = max(280, width - margin * 2)
+        usable = max(300, width - 2 * margin)
 
-        self.hero.frame = (margin, 16, usable, 104)
-        self.app_icon.frame = (16, 22, 54, 54)
-        self.title.frame = (84, 17, usable - 178, 36)
-        self.subtitle.frame = (84, 51, usable - 178, 38)
-        self.quit_button.frame = (usable - 90, 30, 76, 42)
+        self.top_bar.frame = (margin, 14, usable, 82)
+        self.logo.frame = (14, 17, 48, 48)
+        self.app_name.frame = (76, 13, usable - 168, 31)
+        self.app_caption.frame = (76, 42, usable - 168, 24)
+        self.quit_button.frame = (usable - 84, 20, 70, 40)
 
-        self.stats_bar.frame = (margin, 132, usable, 76)
-        third = usable / 3
-        for index, block in enumerate(
+        self.summary.frame = (margin, 108, usable, 132)
+        self.summary_title.frame = (16, 13, usable - 32, 28)
+        self.summary_text.frame = (16, 40, usable - 32, 23)
+        gap = 8
+        pill_width = (usable - 32 - 2 * gap) / 3
+        for index, pill in enumerate(
             (self.stat_scripts, self.stat_favorites, self.stat_runs)
         ):
-            block["container"].frame = (third * index, 0, third, 76)
-            block["value"].frame = (0, 11, third, 30)
-            block["caption"].frame = (0, 41, third, 22)
+            x = 16 + index * (pill_width + gap)
+            pill["container"].frame = (x, 75, pill_width, 44)
+            pill["value"].frame = (0, 3, pill_width, 21)
+            pill["caption"].frame = (0, 22, pill_width, 17)
 
-        self.search.frame = (margin, 220, usable, 46)
-        self.add_button.frame = (margin, 278, usable, 48)
-        self.section_title.frame = (margin, 342, usable * 0.55, 28)
-        self.status.frame = (margin + usable * 0.45, 344, usable * 0.55, 24)
-        self.status.text_alignment = ui.TEXT_ALIGNMENT_RIGHT
+        action_y = 252
+        self.search.frame = (margin, action_y, usable, 44)
+        half = (usable - 10) / 2
+        self.add_file_button.frame = (margin, action_y + 54, half, 46)
+        self.add_folder_button.frame = (margin + half + 10, action_y + 54, half, 46)
 
-        scroll_y = 382
-        self.scroll.frame = (0, scroll_y, width, max(1, height - scroll_y))
+        self.section_title.frame = (margin, action_y + 114, usable * 0.55, 26)
+        self.status.frame = (margin + usable * 0.42, action_y + 116, usable * 0.58, 22)
+
+        scroll_y = action_y + 148
+        self.scroll.frame = (0, scroll_y, width, max(1, height - scroll_y - 10))
         self.layout_cards()
 
     def layout_cards(self) -> None:
-        y = 8
-        width = max(280, self.scroll.width - 32)
+        y = 6
+        width = max(290, self.scroll.width - 32)
         for card in self.cards:
-            container = card["container"]
-            container.frame = (16, y, width, 112)
-            card["icon"].frame = (15, 18, 46, 46)
-            card["name"].frame = (74, 14, width - 220, 28)
-            card["category"].frame = (74, 42, width - 220, 22)
-            card["meta"].frame = (16, 80, width - 178, 21)
-            card["favorite"].frame = (width - 148, 28, 38, 50)
-            card["delete"].frame = (width - 106, 28, 38, 50)
-            card["run"].frame = (width - 60, 27, 48, 52)
-            y += 124
-        self.scroll.content_size = (
-            self.scroll.width,
-            max(self.scroll.height + 1, y + 12),
-        )
+            card["container"].frame = (16, y, width, 96)
+            card["icon"].frame = (14, 18, 42, 42)
+            card["name"].frame = (68, 12, width - 210, 27)
+            card["category"].frame = (68, 39, width - 210, 20)
+            card["meta"].frame = (16, 69, width - 166, 18)
+            card["favorite"].frame = (width - 138, 24, 36, 46)
+            card["delete"].frame = (width - 98, 24, 36, 46)
+            card["run"].frame = (width - 56, 22, 44, 48)
+            y += 106
+        self.scroll.content_size = (self.scroll.width, max(self.scroll.height + 1, y + 8))
 
     def clear_cards(self) -> None:
         for card in self.cards:
@@ -188,184 +223,150 @@ class LauncherProView:
         self.stat_runs["value"].text = str(runs)
 
         if not entries:
-            self._show_empty_state()
+            self._add_empty_card()
         else:
             for entry in entries:
-                self._add_card(entry)
-
+                self._add_script_card(entry)
         self.layout_cards()
 
-    def _show_empty_state(self) -> None:
+    def _base_card(self):
         container = ui.View()
         container.background_color = theme.CARD
-        container.corner_radius = 22
-        icon = self._label("⌘", 32, True, theme.PRIMARY)
+        container.corner_radius = 18
+        return container
+
+    def _add_empty_card(self) -> None:
+        container = self._base_card()
+        icon = self._label("＋", 24, True, theme.PRIMARY)
         icon.text_alignment = ui.TEXT_ALIGNMENT_CENTER
+        icon.background_color = theme.PRIMARY_SOFT
+        icon.corner_radius = 12
         name = self._label(
             "Aucun script" if not self.query else "Aucun résultat",
-            19,
+            17,
             True,
             theme.TEXT,
         )
         category = self._label(
-            "Ajoute ton premier fichier Python avec le bouton ci-dessus"
+            "Ajoute un fichier ou sélectionne un dossier"
             if not self.query
-            else "Modifie les termes de ta recherche",
-            13,
+            else "Essaie avec un autre terme",
+            12,
             False,
             theme.SECONDARY_TEXT,
         )
-        meta = self._label("", 12, False, theme.SECONDARY_TEXT)
+        meta = self._label("", 11, False, theme.SECONDARY_TEXT)
         favorite = ui.Button(title="")
         delete = ui.Button(title="")
         run = ui.Button(title="")
-        for sub in (icon, name, category, meta, favorite, delete, run):
-            container.add_subview(sub)
+        for child in (icon, name, category, meta, favorite, delete, run):
+            container.add_subview(child)
         self.scroll.add_subview(container)
-        self.cards.append(
-            {
-                "container": container,
-                "icon": icon,
-                "name": name,
-                "category": category,
-                "meta": meta,
-                "favorite": favorite,
-                "delete": delete,
-                "run": run,
-            }
-        )
+        self.cards.append({
+            "container": container,
+            "icon": icon,
+            "name": name,
+            "category": category,
+            "meta": meta,
+            "favorite": favorite,
+            "delete": delete,
+            "run": run,
+        })
 
-    def _add_card(self, entry) -> None:
-        container = ui.View()
-        container.background_color = theme.CARD
-        container.corner_radius = 22
-
-        icon = self._label(self._icon_for(entry), 22, True, theme.PRIMARY)
+    def _add_script_card(self, entry) -> None:
+        container = self._base_card()
+        icon = self._label(">_", 18, True, theme.PRIMARY)
         icon.background_color = theme.PRIMARY_SOFT
-        icon.corner_radius = 13
+        icon.corner_radius = 12
         icon.text_alignment = ui.TEXT_ALIGNMENT_CENTER
 
-        name = self._label(entry.name, 18, True, theme.TEXT)
-        category = self._label(
-            entry.category or "Général", 13, False, theme.SECONDARY_TEXT
-        )
-        meta = self._label(
-            self._status_text(entry), 12, False, theme.SECONDARY_TEXT
-        )
+        name = self._label(entry.name, 17, True, theme.TEXT)
+        category = self._label(entry.category or "Général", 12, False, theme.SECONDARY_TEXT)
+        meta = self._label(self._status_text(entry), 11, False, theme.SECONDARY_TEXT)
 
         favorite = ui.Button(title="★" if entry.favorite else "☆")
-        favorite.tint_color = (
-            theme.SUCCESS if entry.favorite else theme.SECONDARY_TEXT
-        )
-        favorite.action = (
-            lambda sender, script_id=entry.id: self.toggle_favorite(script_id)
-        )
+        favorite.tint_color = theme.SUCCESS if entry.favorite else theme.SECONDARY_TEXT
+        favorite.action = lambda sender, sid=entry.id: self.toggle_favorite(sid)
 
         delete = ui.Button(title="×")
         delete.tint_color = theme.DANGER
-        delete.action = lambda sender, script_id=entry.id: self.delete_entry(script_id)
+        delete.action = lambda sender, sid=entry.id: self.delete_entry(sid)
 
         run = ui.Button(title="▶︎")
         run.background_color = theme.PRIMARY
         run.tint_color = theme.TEXT
-        run.corner_radius = 15
-        run.action = lambda sender, script_id=entry.id: self.launch(script_id)
+        run.corner_radius = 13
+        run.action = lambda sender, sid=entry.id: self.launch(sid)
 
-        for sub in (icon, name, category, meta, favorite, delete, run):
-            container.add_subview(sub)
+        for child in (icon, name, category, meta, favorite, delete, run):
+            container.add_subview(child)
         self.scroll.add_subview(container)
-        self.cards.append(
-            {
-                "container": container,
-                "icon": icon,
-                "name": name,
-                "category": category,
-                "meta": meta,
-                "favorite": favorite,
-                "delete": delete,
-                "run": run,
-            }
-        )
-
-    @staticmethod
-    def _icon_for(entry) -> str:
-        mapping = {
-            "terminal": ">_",
-            "hammer": "⚒",
-            "gear": "⚙︎",
-            "wand": "✦",
-            "folder": "▣",
-        }
-        return mapping.get((entry.icon or "terminal").lower(), ">_")
+        self.cards.append({
+            "container": container,
+            "icon": icon,
+            "name": name,
+            "category": category,
+            "meta": meta,
+            "favorite": favorite,
+            "delete": delete,
+            "run": run,
+        })
 
     @staticmethod
     def _status_text(entry) -> str:
         if entry.last_status == "success":
-            duration = (
-                f" · {entry.last_duration:.2f}s"
-                if entry.last_duration is not None
-                else ""
-            )
+            duration = f" · {entry.last_duration:.2f}s" if entry.last_duration is not None else ""
             return f"✓ Réussi{duration} · {entry.run_count} lancement(s)"
         if entry.last_status == "error":
-            return f"⚠ Dernière exécution en erreur · {entry.run_count} lancement(s)"
+            return f"⚠ Erreur · {entry.run_count} lancement(s)"
         return "Jamais lancé"
 
     def on_search(self, sender) -> None:
         self.query = (sender.text or "").strip()
         self.refresh()
 
-    def on_add(self, sender) -> None:
+    def on_add_file(self, sender) -> None:
+        self._open_picker("file")
+
+    def on_add_folder(self, sender) -> None:
+        self._open_picker("folder")
+
+    def _open_picker(self, mode: str) -> None:
         if self.busy:
             return
-        alert = ui.Alert(
-            title="Ajouter un script",
-            message="Choisis la méthode la plus adaptée à l'emplacement du fichier.",
-        )
-        alert.add_action("Annuler")
-        alert.add_action("Choisir un fichier .py")
-        alert.add_action("Choisir un dossier")
-        choice = alert.show()
-        if choice == 1:
-            self._import_direct_file()
-        elif choice == 2:
-            self._import_from_directory()
-
-    def _import_direct_file(self) -> None:
+        self.busy = True
         self.status.text = "Ouverture de Fichiers…"
-        try:
-            selected = pick_python_file()
-            self._finish_import(selected)
-        except Exception as exc:
-            self.status.text = "Sélection impossible"
-            self._alert(
-                "Fichier non sélectionnable",
-                f"{exc}\n\nUtilise « Choisir un dossier » : Launcher Pro détectera les fichiers .py présents.",
-            )
 
-    def _import_from_directory(self) -> None:
-        self.status.text = "Sélection du dossier…"
         try:
-            files = pick_python_file_from_directory()
-            selected = self._choose_file_from_list(files)
-            if selected is not None:
-                self._finish_import(str(selected))
+            self._close_view(confirm=False)
+            time.sleep(0.25)
+            if mode == "file":
+                selected = pick_python_file()
             else:
-                self.status.text = "Ajout annulé"
+                files = pick_python_file_from_directory()
+                selected = self._choose_file(files)
+                if selected is None:
+                    raise RuntimeError("Sélection annulée")
         except Exception as exc:
-            self.status.text = "Dossier inutilisable"
+            self.busy = False
+            self.present()
+            self.status.text = "Sélection annulée"
             self._alert("Import impossible", str(exc))
+            return
 
-    def _choose_file_from_list(self, files: List[Path]) -> Optional[Path]:
-        visible = files[:20]
+        self.present()
+        self.busy = False
+        self._finish_import(str(selected))
+
+    def _choose_file(self, files: List[Path]) -> Optional[Path]:
+        if len(files) == 1:
+            return files[0]
         alert = ui.Alert(
-            title="Scripts détectés",
-            message=(
-                f"{len(files)} fichier(s) .py trouvé(s)."
-                + (" Les 20 premiers sont affichés." if len(files) > 20 else "")
-            ),
+            title="Choisir un script",
+            message=f"{len(files)} fichiers Python détectés",
         )
         alert.add_action("Annuler")
+        visible = files[:12]
         for path in visible:
             alert.add_action(path.name)
         choice = alert.show()
@@ -375,18 +376,21 @@ class LauncherProView:
 
     def _finish_import(self, selected: str) -> None:
         default_name = Path(selected).stem
-        values = self._prompt_import(default_name)
-        if values is None:
+        alert = ui.Alert(title="Ajouter le script", message=Path(selected).name)
+        name_field = ui.TextField(text=default_name)
+        category_field = ui.TextField(text="Général")
+        alert.add_text_field(name_field)
+        alert.add_text_field(category_field)
+        alert.add_action("Annuler")
+        alert.add_action("Ajouter")
+        if alert.show() != 1:
             self.status.text = "Ajout annulé"
             return
-        name, category = values
+
+        name = (name_field.text or default_name).strip()
+        category = (category_field.text or "Général").strip() or "Général"
         try:
-            import_script(
-                selected,
-                name=name,
-                category=category,
-                registry=self.registry,
-            )
+            import_script(selected, name=name, category=category, registry=self.registry)
             self.query = ""
             self.search.text = ""
             self.status.text = f"{name} ajouté"
@@ -394,25 +398,6 @@ class LauncherProView:
         except Exception as exc:
             self.status.text = "Import impossible"
             self._alert("Import impossible", str(exc))
-
-    def _prompt_import(self, default_name: str):
-        alert = ui.Alert(
-            title="Nouveau raccourci",
-            message="Donne un nom clair et une catégorie au script.",
-        )
-        name_field = ui.TextField(text=default_name)
-        category_field = ui.TextField(text="Général")
-        alert.add_text_field(name_field)
-        alert.add_text_field(category_field)
-        alert.add_action("Annuler")
-        alert.add_action("Enregistrer")
-        if alert.show() != 1:
-            return None
-        name = (name_field.text or default_name).strip()
-        category = (category_field.text or "Général").strip() or "Général"
-        if not name:
-            raise ValueError("Le nom du script ne peut pas être vide")
-        return name, category
 
     def toggle_favorite(self, script_id: str) -> None:
         registry = Registry.load()
@@ -425,10 +410,7 @@ class LauncherProView:
     def delete_entry(self, script_id: str) -> None:
         registry = Registry.load()
         entry = registry.require(script_id)
-        alert = ui.Alert(
-            title="Supprimer le script ?",
-            message=f"« {entry.name} » sera retiré de Launcher Pro.",
-        )
+        alert = ui.Alert(title="Supprimer ?", message=f"Retirer « {entry.name} » du lanceur ?")
         alert.add_action("Annuler")
         try:
             alert.add_destructive_action("Supprimer")
@@ -456,54 +438,40 @@ class LauncherProView:
                 self.busy = False
                 self.refresh()
                 if result.success:
-                    self.status.text = f"{entry.name} terminé en {result.duration:.2f}s"
+                    self.status.text = f"Terminé en {result.duration:.2f}s"
                     if result.output.strip():
                         self._alert(f"Sortie — {entry.name}", result.output[-1800:])
                 else:
                     self.status.text = f"Erreur dans {entry.name}"
-                    self._alert(
-                        f"Erreur — {entry.name}",
-                        (result.error or "Erreur inconnue")[-1800:],
-                    )
+                    self._alert("Erreur d’exécution", (result.error or "Erreur inconnue")[-1800:])
 
             self._on_main_thread(finish)
 
         threading.Thread(target=worker, daemon=True).start()
 
-    def on_quit(self, sender=None) -> None:
+    def on_quit(self, sender) -> None:
         if self.busy:
-            self._alert(
-                "Exécution en cours",
-                "Attends la fin du script avant de fermer Launcher Pro.",
-            )
+            self._alert("Action en cours", "Attends la fin de l’opération avant de fermer.")
             return
-        alert = ui.Alert(
-            title="Quitter Launcher Pro ?",
-            message="Les scripts et réglages sont déjà enregistrés.",
-        )
-        alert.add_action("Annuler")
-        alert.add_action("Quitter")
-        if alert.show() != 1:
-            return
-        self._close_view()
+        self._close_view(confirm=True)
 
-    def _close_view(self) -> None:
-        candidates = [self.view]
-        current = self.view
-        for _ in range(8):
-            current = getattr(current, "superview", None)
-            if current is None:
-                break
-            candidates.append(current)
-        for candidate in reversed(candidates):
-            closer = getattr(candidate, "close", None)
-            if callable(closer):
-                try:
-                    closer()
-                    return
-                except Exception:
-                    pass
-        self.status.text = "Utilise la flèche retour de Pyto pour fermer"
+    def _close_view(self, confirm: bool = False) -> None:
+        if confirm:
+            alert = ui.Alert(title="Fermer Launcher Pro ?", message="Tes scripts restent enregistrés.")
+            alert.add_action("Annuler")
+            alert.add_action("Fermer")
+            if alert.show() != 1:
+                return
+        for name in ("close", "dismiss"):
+            method = getattr(self.view, name, None)
+            if callable(method):
+                method()
+                self.is_presented = False
+                return
+        closer = getattr(ui, "close_view", None)
+        if callable(closer):
+            closer(self.view)
+        self.is_presented = False
 
     @staticmethod
     def _on_main_thread(callback) -> None:
@@ -520,11 +488,18 @@ class LauncherProView:
         alert.show()
 
     def present(self) -> None:
-        mode = getattr(ui, "PRESENTATION_MODE_FULLSCREEN", None)
-        if mode is None:
-            ui.show_view(self.view)
-        else:
-            ui.show_view(self.view, mode)
+        if self.is_presented:
+            return
+        self.is_presented = True
+        sheet = getattr(ui, "PRESENTATION_MODE_SHEET", None)
+        if sheet is not None:
+            ui.show_view(self.view, sheet)
+            return
+        form_sheet = getattr(ui, "PRESENTATION_MODE_FORM_SHEET", None)
+        if form_sheet is not None:
+            ui.show_view(self.view, form_sheet)
+            return
+        ui.show_view(self.view)
 
 
 def present_launcher() -> None:
