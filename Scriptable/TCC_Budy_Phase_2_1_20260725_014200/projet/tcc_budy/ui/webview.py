@@ -25,29 +25,43 @@ class TCCBudyWebView:
         self.web = None
         self.server = None
         self.server_thread = None
+        self.closed_event = threading.Event()
         self.html = self._build_html()
 
     def present(self):
         if ui is None:
             raise RuntimeError("Ce projet doit être lancé dans Pyto sur iOS.")
+
+        self.closed_event.clear()
         self._start_server()
+
         self.view = ui.View()
         self.view.title = "TCC Budy"
         self._set_background(self.view)
         self._build_native_header()
+
         self.web = ui.WebView()
         self.view.add_subview(self.web)
         self._layout_views()
+
         if not hasattr(self.web, "load_url"):
             self._stop_server()
             raise RuntimeError("Cette version de Pyto ne fournit pas WebView.load_url().")
+
         self.web.load_url(self.base_url)
+
         try:
             mode = self._presentation_mode()
             if hasattr(ui, "show_view"):
                 ui.show_view(self.view, mode)
             else:
                 self.view.present(mode)
+
+            # Dans certaines versions de Pyto, show_view() rend la vue puis
+            # retourne immédiatement. Sans cette attente, le bloc finally
+            # arrêtait le serveur HTTP local et tous les boutons WebView
+            # devenaient inopérants.
+            self.closed_event.wait()
         finally:
             self._stop_server()
             self.view = None
@@ -82,12 +96,15 @@ class TCCBudyWebView:
         self.header.add_subview(self.close_button)
 
     def _close_from_native_button(self, sender):
-        """Ferme la feuille depuis la hiérarchie native Pyto."""
+        """Ferme la vue native puis libère le serveur local."""
+        self.closed_event.set()
+
         try:
             sender.superview.superview.close()
             return
         except Exception:
             pass
+
         for candidate in (
             getattr(getattr(sender, "superview", None), "superview", None),
             self.view,
@@ -102,18 +119,25 @@ class TCCBudyWebView:
                         return
                     except Exception:
                         continue
-        raise RuntimeError("La vue Pyto n'a pas pu être fermée.")
 
     def _layout_views(self):
         width = max(float(getattr(self.view, "width", 390) or 390), 320)
         height = max(float(getattr(self.view, "height", 780) or 780), 500)
         self.header.frame = (0, 0, width, self.HEADER_HEIGHT)
         self.web.frame = (0, self.HEADER_HEIGHT, width, height - self.HEADER_HEIGHT)
+
         resizing = getattr(ui, "AutoResizing", None)
         flexible_width = getattr(resizing, "FLEXIBLE_WIDTH", None)
         flexible_height = getattr(resizing, "FLEXIBLE_HEIGHT", None)
+        flexible_left_margin = getattr(resizing, "FLEXIBLE_LEFT_MARGIN", None)
+
         self.header.flex = [value for value in (flexible_width,) if value is not None]
-        self.web.flex = [value for value in (flexible_width, flexible_height) if value is not None]
+        self.web.flex = [
+            value for value in (flexible_width, flexible_height) if value is not None
+        ]
+        self.close_button.flex = [
+            value for value in (flexible_left_margin,) if value is not None
+        ]
 
     @property
     def base_url(self):
@@ -139,6 +163,9 @@ class TCCBudyWebView:
             view.background_color = color
 
     def _start_server(self):
+        if self.server is not None:
+            return
+
         owner = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -146,7 +173,10 @@ class TCCBudyWebView:
 
             def do_GET(self):
                 if urlsplit(self.path).path not in ("/", "/index.html"):
-                    return self._json({"type": "error", "message": "Ressource introuvable."}, 404)
+                    return self._json(
+                        {"type": "error", "message": "Ressource introuvable."}, 404
+                    )
+
                 body = owner.html.encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -161,12 +191,19 @@ class TCCBudyWebView:
 
             def do_POST(self):
                 if urlsplit(self.path).path != "/api":
-                    return self._json({"type": "error", "message": "Route inconnue."}, 404)
+                    return self._json(
+                        {"type": "error", "message": "Route inconnue."}, 404
+                    )
+
                 try:
                     size = int(self.headers.get("Content-Length", "0"))
                     if size <= 0 or size > 1_000_000:
                         raise ValueError("Taille de commande invalide.")
+
                     request = json.loads(self.rfile.read(size).decode("utf-8"))
+                    if not isinstance(request, dict):
+                        raise ValueError("La commande doit être un objet JSON.")
+
                     action = request.get("action")
                     payload = request.get("payload") or {}
                     self._json(owner._dispatch(action, payload), 200)
@@ -191,7 +228,11 @@ class TCCBudyWebView:
 
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
         self.server.daemon_threads = True
-        self.server_thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.server_thread = threading.Thread(
+            target=self.server.serve_forever,
+            name="TCCBudyLocalServer",
+            daemon=True,
+        )
         self.server_thread.start()
 
     def _stop_server(self):
@@ -209,7 +250,9 @@ class TCCBudyWebView:
         template = (assets / "index.html").read_text(encoding="utf-8")
         css = (assets / "app.css").read_text(encoding="utf-8")
         js = (assets / "app.js").read_text(encoding="utf-8")
-        return template.replace("/*__APP_CSS__*/", css).replace("/*__APP_JS__*/", js)
+        return template.replace("/*__APP_CSS__*/", css).replace(
+            "/*__APP_JS__*/", js
+        )
 
     def _dispatch(self, action, payload):
         if action in ("app_ready", "list_conversations"):
@@ -217,16 +260,39 @@ class TCCBudyWebView:
                 "type": "initial_state",
                 "conversations": self.service.list_conversations(),
                 "provider": self.settings.provider_label,
-                "model": self.settings.model if self.settings.provider == "openai" else "local",
+                "model": self.settings.model
+                if self.settings.provider == "openai"
+                else "local",
             }
         if action == "create_conversation":
-            return {"type": "conversation_created", "conversation": self.service.create_conversation()}
+            return {
+                "type": "conversation_created",
+                "conversation": self.service.create_conversation(),
+            }
         if action == "open_conversation":
-            return {"type": "conversation_loaded", **self.service.load_conversation(payload["conversation_id"])}
+            return {
+                "type": "conversation_loaded",
+                **self.service.load_conversation(payload["conversation_id"]),
+            }
         if action == "send_message":
-            return {"type": "message_result", **self.service.send_message(payload["conversation_id"], payload["text"], payload.get("request_id"))}
+            return {
+                "type": "message_result",
+                **self.service.send_message(
+                    payload["conversation_id"],
+                    payload["text"],
+                    payload.get("request_id"),
+                ),
+            }
         if action == "retry_response":
-            return {"type": "message_result", **self.service.retry_response(payload["conversation_id"], payload["user_message_id"])}
+            return {
+                "type": "message_result",
+                **self.service.retry_response(
+                    payload["conversation_id"], payload["user_message_id"]
+                ),
+            }
         if action == "delete_conversation":
-            return {"type": "conversation_deleted", **self.service.delete_conversation(payload["conversation_id"])}
+            return {
+                "type": "conversation_deleted",
+                **self.service.delete_conversation(payload["conversation_id"]),
+            }
         raise ValueError(f"Action inconnue: {action}")
