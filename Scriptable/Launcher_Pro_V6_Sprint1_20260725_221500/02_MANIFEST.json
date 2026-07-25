@@ -1,0 +1,21 @@
+{
+  "project": "Launcher Pro V6",
+  "sprint": 1,
+  "version": "6.0.0-sprint1",
+  "target": "Pyto / iOS",
+  "python": ">=3.10",
+  "entrypoints": [
+    "projet/install.py",
+    "projet/test_sprint1.py",
+    "projet/LauncherPro.py"
+  ],
+  "features": [
+    "registry",
+    "importer",
+    "runner",
+    "history",
+    "logger",
+    "backup",
+    "settings"
+  ]
+}
