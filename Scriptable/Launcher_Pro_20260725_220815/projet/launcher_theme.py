@@ -1,0 +1,9 @@
+TITLE = "Launcher Pro"
+SUBTITLE = "Tes scripts Python, prêts à partir"
+BG = (0.055, 0.075, 0.12, 1.0)
+CARD = (0.10, 0.13, 0.20, 1.0)
+PRIMARY = (0.16, 0.48, 0.95, 1.0)
+TEXT = (0.96, 0.97, 1.0, 1.0)
+MUTED = (0.63, 0.68, 0.78, 1.0)
+SUCCESS = (0.25, 0.78, 0.48, 1.0)
+DANGER = (0.95, 0.30, 0.34, 1.0)
