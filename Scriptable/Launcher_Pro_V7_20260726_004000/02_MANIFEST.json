@@ -1,0 +1,22 @@
+{
+  "project": "Launcher Pro V7",
+  "version": "7.0.0",
+  "repository": "dalquier/Scriptable",
+  "branch": "main",
+  "root": "Scriptable/Launcher_Pro_V7_20260726_004000",
+  "platform": "Pyto / iOS",
+  "python": ">=3.10",
+  "features": [
+    "standalone_scripts",
+    "pyto_projects",
+    "editable_metadata",
+    "entry_script_selection",
+    "search",
+    "favorites",
+    "history",
+    "sheet_ui",
+    "json_persistence"
+  ],
+  "entrypoint": "projet/LauncherPro.py",
+  "installer": "projet/install.py"
+}
