@@ -1,0 +1,24 @@
+{
+  "project": "Launcher Pro",
+  "version": "5.0.0",
+  "delivery": "Launcher_Pro_20260725_220815",
+  "target": "Pyto 19.x / Python 3.10+ / iOS",
+  "entrypoint": "projet/LauncherPro.py",
+  "files": [
+    "00_README.md",
+    "01_ARBORESCENCE.md",
+    "02_MANIFEST.json",
+    "03_INSTALLATION.md",
+    "04_CHANGELOG.md",
+    "projet/LauncherPro.py",
+    "projet/install.py",
+    "projet/launcher_widget.py",
+    "projet/launcher_core.py",
+    "projet/launcher_storage.py",
+    "projet/launcher_runner.py",
+    "projet/launcher_picker.py",
+    "projet/launcher_theme.py",
+    "projet/data/registry.json",
+    "projet/data/scripts/.gitkeep"
+  ]
+}
