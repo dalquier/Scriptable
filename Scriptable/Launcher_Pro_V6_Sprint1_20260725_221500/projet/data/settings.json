@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "default_category": "Général",
+  "sort_mode": "favorite_name",
+  "keep_source_path": true,
+  "capture_output": true,
+  "max_history_entries": 500,
+  "auto_backup_registry": true
+}
