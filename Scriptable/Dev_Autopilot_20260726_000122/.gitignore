@@ -1,0 +1,7 @@
+.env
+secrets.py
+secrets.json
+projet/handoff.md
+projet/state.json
+__pycache__/
+*.pyc
