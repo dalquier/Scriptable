@@ -7,7 +7,7 @@ from typing import List, Optional
 
 from .logger import log
 from .models import LauncherItem
-from .paths import SCRIPTS_DIR, ensure_directories
+from .paths import PROJECTS_DIR, SCRIPTS_DIR, ensure_directories
 from .registry import Registry
 
 
@@ -35,31 +35,69 @@ def validate_project(root: str | Path, entry_script: str) -> tuple[Path, Path]:
     return project_root, entry
 
 
-def import_script(path: str | Path, name: Optional[str] = None, category: str = "Général", registry: Optional[Registry] = None) -> LauncherItem:
+def import_script(
+    path: str | Path,
+    name: Optional[str] = None,
+    category: str = "Général",
+    registry: Optional[Registry] = None,
+) -> LauncherItem:
     ensure_directories()
     source = validate_python_file(path)
     active = registry or Registry.load()
-    provisional = LauncherItem.create_script(name or source.stem, "", str(source))
-    target = SCRIPTS_DIR / f"{provisional.id}_{source.name}"
+    item = LauncherItem.create_script(name or source.stem, "", str(source))
+    target = SCRIPTS_DIR / f"{item.id}_{source.name}"
     shutil.copy2(source, target)
-    provisional.local_path = str(target)
-    provisional.category = category.strip() or "Général"
+    item.local_path = str(target)
+    item.category = category.strip() or "Général"
     try:
-        active.add(provisional)
+        active.add(item)
     except Exception:
         target.unlink(missing_ok=True)
         raise
-    log(f"Script importé : {provisional.name}")
-    return provisional
+    log(f"Script importé : {item.name}")
+    return item
 
 
-def add_project(root: str | Path, entry_script: str, name: Optional[str] = None, category: str = "Général", registry: Optional[Registry] = None) -> LauncherItem:
-    project_root, entry = validate_project(root, entry_script)
+def add_project(
+    root: str | Path,
+    entry_script: str,
+    name: Optional[str] = None,
+    category: str = "Général",
+    registry: Optional[Registry] = None,
+) -> LauncherItem:
+    """Copie le projet dans la bibliothèque locale puis l’enregistre.
+
+    La copie locale évite la perte d’accès au dossier iOS après la fermeture du
+    sélecteur de documents.
+    """
+    ensure_directories()
+    source_root, source_entry = validate_project(root, entry_script)
     active = registry or Registry.load()
-    item = LauncherItem.create_project(name or project_root.name, str(project_root), str(entry.relative_to(project_root)))
+    item = LauncherItem.create_project(
+        name or source_root.name,
+        "",
+        str(source_entry.relative_to(source_root)),
+    )
+    item.source_path = str(source_root)
     item.category = category.strip() or "Général"
-    active.add(item)
-    log(f"Projet ajouté : {item.name} ({item.entry_script})")
+    safe_name = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in source_root.name)
+    target_root = PROJECTS_DIR / f"{item.id}_{safe_name or 'project'}"
+
+    def ignore(directory: str, names: list[str]) -> set[str]:
+        ignored = {"__pycache__", ".git", ".DS_Store"}
+        return {name for name in names if name in ignored or name.endswith(".pyc")}
+
+    try:
+        shutil.copytree(source_root, target_root, ignore=ignore)
+        local_entry = target_root / item.entry_script
+        validate_python_file(local_entry)
+        item.project_root = str(target_root)
+        active.add(item)
+    except Exception:
+        shutil.rmtree(target_root, ignore_errors=True)
+        raise
+
+    log(f"Projet importé : {item.name} ({item.entry_script})")
     return item
 
 
@@ -68,22 +106,49 @@ def list_python_files(directory: str | Path, recursive: bool = True) -> List[Pat
     if not root.exists() or not root.is_dir():
         raise NotADirectoryError(f"Dossier introuvable : {root}")
     pattern = "**/*.py" if recursive else "*.py"
-    return sorted((path for path in root.glob(pattern) if path.is_file()), key=lambda path: (len(path.parts), path.name.lower()))
+    return sorted(
+        (path for path in root.glob(pattern) if path.is_file()),
+        key=lambda path: (len(path.relative_to(root).parts), path.name.lower()),
+    )
 
 
 def pick_file() -> str:
-    import file_system  # type: ignore
-    result = file_system.import_file(multiple_selection=False, type_identifier="public.item")
-    if isinstance(result, (list, tuple)):
-        result = result[0] if result else None
-    if not result:
-        raise RuntimeError("Aucun fichier sélectionné")
-    return str(result)
+    """Ouvre le sélecteur natif sans filtre iOS bloquant.
+
+    Le fichier est validé après sélection afin que les fichiers .py restent
+    sélectionnables dans iCloud Drive et les fournisseurs tiers.
+    """
+    try:
+        import _sharing as sharing  # type: ignore
+
+        picker = sharing.FilePicker()
+        picker.allows_multiple_selection = False
+        picker.file_extensions = []
+        picker.mime_types = []
+        picker.file_types = ["public.item"]
+        sharing.pick_documents(picker)
+        picked = sharing.picked_files()
+        if not picked:
+            raise RuntimeError("Aucun fichier sélectionné")
+        return str(validate_python_file(picked[0]))
+    except ImportError:
+        import file_system  # type: ignore
+
+        result = file_system.import_file(multiple_selection=False)
+        if isinstance(result, (list, tuple)):
+            result = result[0] if result else None
+        if not result:
+            raise RuntimeError("Aucun fichier sélectionné")
+        return str(validate_python_file(result))
 
 
 def pick_directory() -> str:
     import file_system  # type: ignore
+
     result = file_system.pick_directory()
     if not result:
         raise RuntimeError("Aucun dossier sélectionné")
-    return str(result)
+    root = Path(result).expanduser().resolve()
+    if not root.exists() or not root.is_dir():
+        raise NotADirectoryError(f"Dossier inaccessible : {root}")
+    return str(root)
