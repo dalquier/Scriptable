@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "default_category": "Général",
+  "keep_source_path": true,
+  "auto_backup_registry": true,
+  "presentation": "sheet"
+}
