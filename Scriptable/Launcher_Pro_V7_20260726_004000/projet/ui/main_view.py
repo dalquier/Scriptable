@@ -51,7 +51,13 @@ class LauncherProView:
         self.stat_scripts = self._stat("0", "Scripts")
         self.stat_projects = self._stat("0", "Projets")
         self.stat_runs = self._stat("0", "Lancements")
-        for sub in (self.summary_title, self.summary_text, self.stat_scripts["container"], self.stat_projects["container"], self.stat_runs["container"]):
+        for sub in (
+            self.summary_title,
+            self.summary_text,
+            self.stat_scripts["container"],
+            self.stat_projects["container"],
+            self.stat_runs["container"],
+        ):
             self.summary.add_subview(sub)
 
         self.search = ui.TextField(placeholder="Rechercher")
@@ -86,14 +92,21 @@ class LauncherProView:
         self.section_title = self._label("Bibliothèque", 20, True, theme.TEXT)
         self.status = self._label("Prêt", 12, False, theme.MUTED)
         self.status.text_alignment = ui.TEXT_ALIGNMENT_RIGHT
-
         self.scroll = ui.ScrollView()
         self.scroll.background_color = theme.BACKGROUND
 
         for control in (
-            self.header, self.summary, self.search, self.add_script_button, self.add_project_button,
-            self.filter_all, self.filter_scripts, self.filter_projects,
-            self.section_title, self.status, self.scroll,
+            self.header,
+            self.summary,
+            self.search,
+            self.add_script_button,
+            self.add_project_button,
+            self.filter_all,
+            self.filter_scripts,
+            self.filter_projects,
+            self.section_title,
+            self.status,
+            self.scroll,
         ):
             self.view.add_subview(control)
 
@@ -127,7 +140,6 @@ class LauncherProView:
         self.title.frame = (84, 16, usable - 184, 34)
         self.subtitle.frame = (84, 49, usable - 184, 36)
         self.close_button.frame = (usable - 92, 29, 78, 42)
-
         self.summary.frame = (margin, 128, usable, 150)
         self.summary_title.frame = (18, 16, usable - 36, 30)
         self.summary_text.frame = (18, 46, usable - 36, 36)
@@ -136,16 +148,13 @@ class LauncherProView:
             stat["container"].frame = (third * index, 86, third, 58)
             stat["value"].frame = (0, 0, third, 30)
             stat["caption"].frame = (0, 29, third, 22)
-
         self.search.frame = (margin, 292, usable, 46)
         self.add_script_button.frame = (margin, 350, (usable - 12) / 2, 48)
         self.add_project_button.frame = (margin + (usable - 12) / 2 + 12, 350, (usable - 12) / 2, 48)
-
         filter_width = (usable - 16) / 3
         self.filter_all.frame = (margin, 410, filter_width, 38)
         self.filter_scripts.frame = (margin + filter_width + 8, 410, filter_width, 38)
         self.filter_projects.frame = (margin + (filter_width + 8) * 2, 410, filter_width, 38)
-
         self.section_title.frame = (margin, 462, usable * 0.6, 28)
         self.status.frame = (margin + usable * 0.4, 464, usable * 0.6, 24)
         scroll_y = 500
@@ -194,8 +203,11 @@ class LauncherProView:
         self.layout_cards()
 
     def _style_filters(self) -> None:
-        mapping = ((self.filter_all, None), (self.filter_scripts, "script"), (self.filter_projects, "project"))
-        for button, value in mapping:
+        for button, value in (
+            (self.filter_all, None),
+            (self.filter_scripts, "script"),
+            (self.filter_projects, "project"),
+        ):
             active = value == self.filter_kind
             button.background_color = theme.PRIMARY if active else theme.SURFACE
             button.tint_color = theme.TEXT if active else theme.MUTED
@@ -209,9 +221,7 @@ class LauncherProView:
         name = self._label("Aucun élément", 19, True, theme.TEXT)
         kind = self._label("Ajoute un script autonome ou un projet Pyto.", 13, False, theme.MUTED)
         meta = self._label("", 12, False, theme.MUTED)
-        edit = ui.Button(title="")
-        favorite = ui.Button(title="")
-        run = ui.Button(title="")
+        edit, favorite, run = ui.Button(title=""), ui.Button(title=""), ui.Button(title="")
         for sub in (badge, name, kind, meta, edit, favorite, run):
             container.add_subview(sub)
         self.scroll.add_subview(container)
@@ -221,8 +231,7 @@ class LauncherProView:
         container = ui.View()
         container.background_color = theme.CARD
         container.corner_radius = 20
-        badge_text = "APP" if item.kind == "project" else "PY"
-        badge = self._label(badge_text, 16, True, theme.PRIMARY)
+        badge = self._label("APP" if item.kind == "project" else "PY", 16, True, theme.PRIMARY)
         badge.background_color = theme.PRIMARY_SOFT
         badge.corner_radius = 13
         badge.text_alignment = ui.TEXT_ALIGNMENT_CENTER
@@ -268,60 +277,44 @@ class LauncherProView:
             return
         self.busy = True
         self.status.text = "Ouverture de Fichiers…"
-
-        def worker():
-            try:
-                path = pick_file()
-                item = import_script(path, registry=Registry.load())
-                error = None
-            except Exception as exc:
-                item = None
-                error = str(exc)
-
-            def finish():
-                self.busy = False
-                if error:
-                    self.status.text = "Import impossible"
-                    self._alert("Import impossible", error)
-                    return
-                self.status.text = f"{item.name} ajouté"
-                self.refresh()
-                self.edit_item(item.id)
-            self._on_main_thread(finish)
-
-        threading.Thread(target=worker, daemon=True).start()
+        try:
+            path = pick_file()
+            self.status.text = "Copie et enregistrement…"
+            item = import_script(path, registry=Registry.load())
+        except Exception as exc:
+            self.status.text = "Import impossible"
+            self._alert("Import impossible", str(exc))
+            self.busy = False
+            return
+        self.busy = False
+        self.status.text = f"{item.name} ajouté"
+        self.refresh()
+        self.edit_item(item.id)
 
     def on_add_project(self, sender) -> None:
         if self.busy:
             return
         self.busy = True
         self.status.text = "Choisis le dossier du projet…"
-
-        def worker():
-            try:
-                root = pick_directory()
-                files = list_python_files(root, recursive=True)
-                error = None
-            except Exception as exc:
-                root, files, error = None, [], str(exc)
-
-            def finish():
+        try:
+            root = pick_directory()
+            files = list_python_files(root, recursive=True)
+            selected = self._choose_entry_script(root, files)
+            if selected is None:
+                self.status.text = "Ajout annulé"
                 self.busy = False
-                if error:
-                    self.status.text = "Sélection impossible"
-                    self._alert("Projet non ajouté", error)
-                    return
-                selected = self._choose_entry_script(root, files)
-                if selected is None:
-                    self.status.text = "Ajout annulé"
-                    return
-                item = add_project(root, selected, registry=Registry.load())
-                self.status.text = f"{item.name} ajouté"
-                self.refresh()
-                self.edit_item(item.id)
-            self._on_main_thread(finish)
-
-        threading.Thread(target=worker, daemon=True).start()
+                return
+            self.status.text = "Copie et enregistrement du projet…"
+            item = add_project(root, selected, registry=Registry.load())
+        except Exception as exc:
+            self.status.text = "Projet non ajouté"
+            self._alert("Projet non ajouté", str(exc))
+            self.busy = False
+            return
+        self.busy = False
+        self.status.text = f"{item.name} ajouté"
+        self.refresh()
+        self.edit_item(item.id)
 
     def _choose_entry_script(self, root: str, files: List[Path]) -> Optional[str]:
         if not files:
@@ -329,7 +322,14 @@ class LauncherProView:
             return None
         root_path = Path(root)
         preferred = ["main.py", "bootstrap.py", "app.py", "run.py", "launcher.py"]
-        ordered = sorted(files, key=lambda p: (preferred.index(p.name.lower()) if p.name.lower() in preferred else 99, len(p.parts), p.name.lower()))
+        ordered = sorted(
+            files,
+            key=lambda p: (
+                preferred.index(p.name.lower()) if p.name.lower() in preferred else 99,
+                len(p.relative_to(root_path).parts),
+                p.name.lower(),
+            ),
+        )
         alert = ui.Alert(title="Script de démarrage", message="Choisis le point d’entrée du projet")
         alert.add_action("Annuler")
         shown = ordered[:12]
@@ -338,7 +338,10 @@ class LauncherProView:
         choice = alert.show()
         if choice <= 0:
             return None
-        return str(shown[choice - 1].relative_to(root_path))
+        index = choice - 1
+        if index >= len(shown):
+            return None
+        return str(shown[index].relative_to(root_path))
 
     def edit_item(self, item_id: str) -> None:
         registry = Registry.load()
@@ -354,7 +357,10 @@ class LauncherProView:
             alert.add_text_field(entry_field)
         alert.add_action("Annuler")
         alert.add_action("Enregistrer")
-        alert.add_destructive_action("Supprimer")
+        try:
+            alert.add_destructive_action("Supprimer")
+        except Exception:
+            alert.add_action("Supprimer")
         choice = alert.show()
         if choice == 1:
             item.name = (name_field.text or item.name).strip() or item.name
@@ -404,6 +410,7 @@ class LauncherProView:
                 else:
                     self.status.text = f"Erreur dans {item.name}"
                     self._alert("Erreur d’exécution", (result.error or "Erreur inconnue")[-2200:])
+
             self._on_main_thread(finish)
 
         threading.Thread(target=worker, daemon=True).start()
