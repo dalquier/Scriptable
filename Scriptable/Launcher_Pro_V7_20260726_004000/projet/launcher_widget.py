@@ -1,8 +1,70 @@
 from __future__ import annotations
 
+import os
+import sys
+import threading
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import widgets as wd
+
+
+def _bootstrap_project_path() -> Path:
+    """Ajoute la racine Launcher Pro au chemin Python du widget.
+
+    Pyto exécute parfois les widgets avec un répertoire courant différent du
+    dossier du script. On recherche donc la racine à partir de plusieurs chemins
+    fiables avant d'importer le package ``core``.
+    """
+    candidates: list[Path] = []
+
+    try:
+        candidates.append(Path(__file__).resolve().parent)
+    except Exception:
+        pass
+
+    try:
+        script_path = getattr(threading.current_thread(), "script_path", None)
+        if script_path:
+            candidates.append(Path(script_path).resolve().parent)
+    except Exception:
+        pass
+
+    try:
+        candidates.append(Path.cwd().resolve())
+    except Exception:
+        pass
+
+    # Certains contextes de widget démarrent dans un sous-dossier temporaire.
+    expanded: list[Path] = []
+    for candidate in candidates:
+        expanded.append(candidate)
+        expanded.extend(list(candidate.parents)[:5])
+
+    seen: set[str] = set()
+    for candidate in expanded:
+        key = str(candidate)
+        if key in seen:
+            continue
+        seen.add(key)
+        if (candidate / "core" / "__init__.py").exists():
+            if key not in sys.path:
+                sys.path.insert(0, key)
+            try:
+                os.chdir(candidate)
+            except OSError:
+                pass
+            return candidate
+
+    searched = "\n".join(f"- {path}" for path in candidates) or "- aucun chemin détecté"
+    raise ModuleNotFoundError(
+        "Le dossier Launcher Pro V7 n'a pas été trouvé. "
+        "Place launcher_widget.py dans le même dossier que LauncherPro.py et le dossier core.\n\n"
+        f"Chemins examinés :\n{searched}"
+    )
+
+
+PROJECT_ROOT = _bootstrap_project_path()
 
 from core.registry import Registry
 from core.url_scheme import run_by_id
@@ -36,6 +98,7 @@ class LauncherProvider(wd.TimelineProvider):
 
     def widget(self, date):
         widget = wd.Widget()
+        registry = Registry.load()
         items = _favorite_items()
 
         small = widget.small_layout
@@ -43,7 +106,7 @@ class LauncherProvider(wd.TimelineProvider):
         small.add_row([_text("▶", 28, PRIMARY, True), wd.Spacer()])
         small.add_vertical_spacer()
         small.add_row([_text("Launcher Pro", 16, TEXT, True)])
-        small.add_row([_text(f"{len(Registry.load().items)} éléments", 11, MUTED)])
+        small.add_row([_text(f"{len(registry.items)} éléments", 11, MUTED)])
         small.set_link("open")
 
         medium = widget.medium_layout
