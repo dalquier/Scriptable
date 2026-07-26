@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Pyto App Demo</title>
+  <style>/*__APP_CSS__*/</style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <span class="eyebrow">PYTO APP FRAMEWORK</span>
+        <h1 id="screen-title">Accueil</h1>
+      </div>
+      <button class="icon-button" data-action="refresh" aria-label="Actualiser">↻</button>
+    </header>
+
+    <main>
+      <section class="screen active" data-screen="home">
+        <article class="hero-card">
+          <div>
+            <span class="pill">V5 • hybride</span>
+            <h2>Bonjour <span id="display-name">Damien</span></h2>
+            <p>Une interface WebView moderne pilotée par Python et complétée par UIKit.</p>
+          </div>
+          <button class="primary-button" data-action="primary-action">Exécuter l’action</button>
+        </article>
+
+        <div class="stats-grid">
+          <article class="stat-card"><span>Ouvertures</span><strong id="launch-count">0</strong></article>
+          <article class="stat-card"><span>Actions</span><strong id="action-count">0</strong></article>
+        </div>
+
+        <article class="section-card">
+          <div class="section-heading"><div><span class="eyebrow">DÉMONSTRATION</span><h3>Fonctions natives</h3></div></div>
+          <div class="action-list">
+            <button class="row-button" data-action="share"><span>Partager le résumé</span><b>›</b></button>
+            <button class="row-button" data-action="open-url" data-url="https://pyto.app"><span>Ouvrir le site Pyto</span><b>›</b></button>
+          </div>
+        </article>
+      </section>
+
+      <section class="screen" data-screen="activity">
+        <article class="section-card">
+          <div class="section-heading"><div><span class="eyebrow">JOURNAL</span><h3>Activité récente</h3></div></div>
+          <div id="activity-list" class="activity-list"></div>
+        </article>
+      </section>
+
+      <section class="screen" data-screen="architecture">
+        <article class="section-card architecture-card">
+          <span class="eyebrow">ARCHITECTURE</span>
+          <h3>Trois couches complémentaires</h3>
+          <div class="layer"><strong>WebView</strong><span>Design, navigation, animations et composants.</span></div>
+          <div class="layer"><strong>Python</strong><span>Logique métier, données, fichiers et orchestration.</span></div>
+          <div class="layer"><strong>UIKit</strong><span>Alertes, partage, URLs et services natifs iOS.</span></div>
+        </article>
+      </section>
+
+      <section class="screen" data-screen="settings">
+        <article class="section-card">
+          <div class="section-heading"><div><span class="eyebrow">PRÉFÉRENCES</span><h3>Personnalisation</h3></div></div>
+          <label class="field-label">Nom affiché</label>
+          <input id="name-input" class="text-input" value="Damien" autocomplete="off">
+          <button class="secondary-button" id="save-name">Enregistrer le nom</button>
+
+          <label class="switch-row">
+            <span><strong>Notifications</strong><small>Préférence de démonstration</small></span>
+            <input id="notifications-toggle" type="checkbox" checked>
+          </label>
+
+          <button class="danger-button" data-action="reset">Réinitialiser les données</button>
+        </article>
+      </section>
+    </main>
+
+    <nav class="tabbar">
+      <button class="tab active" data-target="home"><span>⌂</span><small>Accueil</small></button>
+      <button class="tab" data-target="activity"><span>◷</span><small>Activité</small></button>
+      <button class="tab" data-target="architecture"><span>◇</span><small>Architecture</small></button>
+      <button class="tab" data-target="settings"><span>⚙</span><small>Réglages</small></button>
+    </nav>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script>window.__INITIAL_STATE__ = __INITIAL_STATE__;</script>
+  <script>/*__APP_JS__*/</script>
+</body>
+</html>
