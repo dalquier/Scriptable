@@ -68,7 +68,7 @@ class PytoAppFramework:
         return {
             "state": self.store.snapshot(),
             "capabilities": native_capabilities(),
-            "version": "6.0.3",
+            "version": "6.0.4",
         }
 
     def _did_receive_message(self, webview: ui.WebView, name: str, message: object) -> None:
@@ -95,6 +95,10 @@ class PytoAppFramework:
             self._send_state()
             return
 
+        if action == "close":
+            self._close_application()
+            return
+
         if action == "primary-action":
             self.store.add_activity("Action principale exécutée")
             show_alert("Action réussie", "La commande Python a été exécutée.")
@@ -118,6 +122,17 @@ class PytoAppFramework:
             raise ValueError(f"Action inconnue : {action}")
 
         self._send_state()
+
+    def _close_application(self) -> None:
+        root = self.root_view
+        if root is None:
+            return
+
+        # Détache d'abord le pont pour empêcher un nouveau callback pendant
+        # la fermeture, puis ferme exactement la vue présentée par show_view().
+        self.webview = None
+        self.root_view = None
+        root.close()
 
     @staticmethod
     def _required(parameters: dict[str, Any], key: str) -> str:
