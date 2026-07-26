@@ -167,6 +167,10 @@ class LauncherProView:
             card["run"].frame = (width - 82, 21, 68, 48)
             y += 101
         self.scroll.content_size = (self.scroll.width, max(self.scroll.height + 1, y + 8))
+        try:
+            self.scroll_host.frame = (0, 0, self.scroll.width, self.scroll.content_size[1])
+        except Exception:
+            pass
 
     def clear_cards(self) -> None:
         for card in self.cards:
@@ -278,30 +282,51 @@ class LauncherProView:
         alert.add_action("Script autonome")
         alert.add_action("Projet Pyto")
         choice = alert.show()
-        if choice == 1:
-            self.on_add_script(sender)
-        elif choice == 2:
-            self.on_add_project(sender)
 
-    def on_add_script(self, sender) -> None:
+        # Laisser iOS terminer la fermeture de l’alerte avant de présenter Fichiers.
+        if choice == 1:
+            self._after_modal(self.on_add_script)
+        elif choice == 2:
+            self._after_modal(self.on_add_project)
+
+    def on_add_script(self, sender=None) -> None:
         if self.busy:
             return
         self.busy = True
         self.status.text = "Ouverture de Fichiers…"
         try:
             path = pick_file()
-            item = import_script(path, registry=Registry.load())
         except Exception as exc:
-            self.status.text = "Import impossible"
-            self._alert("Import impossible", str(exc))
-        else:
-            self.status.text = f"{item.name} ajouté"
-            self.refresh()
-            self.edit_item(item.id)
-        finally:
             self.busy = False
+            self.status.text = "Sélection annulée"
+            if exc.__class__.__name__ != "FilePickerCancellation":
+                self._after_modal(lambda: self._alert("Import impossible", str(exc)), 0.15)
+            return
 
-    def on_add_project(self, sender) -> None:
+        self.status.text = "Import du script…"
+
+        def worker() -> None:
+            try:
+                item = import_script(path, registry=Registry.load())
+                error = None
+            except Exception as exc:
+                item, error = None, str(exc)
+
+            def finish() -> None:
+                self.busy = False
+                if error:
+                    self.status.text = "Import impossible"
+                    self._alert("Import impossible", error)
+                    return
+                self.status.text = f"{item.name} ajouté"
+                self.refresh()
+                self._after_modal(lambda: self.edit_item(item.id), 0.20)
+
+            self._on_main_thread(finish)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def on_add_project(self, sender=None) -> None:
         if self.busy:
             return
         self.busy = True
@@ -309,16 +334,26 @@ class LauncherProView:
         try:
             root = pick_directory()
             files = list_python_files(root, recursive=True)
-            selected = self._choose_entry_script(root, files)
-            if selected is None:
-                self.status.text = "Ajout annulé"
-                return
         except Exception as exc:
-            self.status.text = "Sélection impossible"
-            self._alert("Projet non ajouté", str(exc))
             self.busy = False
+            self.status.text = "Sélection annulée"
+            if exc.__class__.__name__ != "FilePickerCancellation":
+                self._after_modal(lambda: self._alert("Projet non ajouté", str(exc)), 0.15)
             return
 
+        self.busy = False
+        self.status.text = "Choix du point d’entrée…"
+        self._after_modal(lambda: self._select_project_entry(root, files), 0.30)
+
+    def _select_project_entry(self, root: str, files: List[Path]) -> None:
+        selected = self._choose_entry_script(root, files)
+        if selected is None:
+            self.status.text = "Ajout annulé"
+            return
+        self._copy_project(root, selected)
+
+    def _copy_project(self, root: str, selected: str) -> None:
+        self.busy = True
         self.status.text = "Copie du projet…"
 
         def worker() -> None:
@@ -336,7 +371,7 @@ class LauncherProView:
                     return
                 self.status.text = f"{item.name} ajouté"
                 self.refresh()
-                self.edit_item(item.id)
+                self._after_modal(lambda: self.edit_item(item.id), 0.20)
 
             self._on_main_thread(finish)
 
@@ -408,7 +443,7 @@ class LauncherProView:
         elif choice == 2:
             url = build_run_url(item.id)
             copied = copy_text(url)
-            self._alert("URL de lancement", "URL copiée dans le presse-papiers." if copied else url)
+            self._after_modal(lambda: self._alert("URL de lancement", "URL copiée dans le presse-papiers." if copied else url), 0.15)
         elif choice == 3:
             item.favorite = not item.favorite
             registry.update(item)
@@ -455,6 +490,14 @@ class LauncherProView:
     def _on_main_thread(callback) -> None:
         runner = getattr(ui, "run_on_main_thread", None)
         runner(callback) if callable(runner) else callback()
+
+    def _after_modal(self, callback, delay: float = 0.38) -> None:
+        def delayed() -> None:
+            self._on_main_thread(callback)
+
+        timer = threading.Timer(delay, delayed)
+        timer.daemon = True
+        timer.start()
 
     @staticmethod
     def _alert(title: str, message: str) -> None:
