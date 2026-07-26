@@ -1,0 +1,14 @@
+{
+  "model": "gpt-5.6",
+  "api_url": "https://api.openai.com/v1/responses",
+  "max_output_tokens": 8000,
+  "max_iterations_per_run": 3,
+  "project_root": "..",
+  "state_file": "state.json",
+  "index_file": "project_index.json",
+  "allow_write": true,
+  "allow_delete": false,
+  "backup_before_write": true,
+  "include_extensions": [".py", ".json", ".md", ".txt"],
+  "exclude_directories": ["Builder/backups", "Builder/logs", "__pycache__", ".git"]
+}
