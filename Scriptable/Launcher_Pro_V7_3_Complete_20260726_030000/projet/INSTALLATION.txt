@@ -1,0 +1,9 @@
+LAUNCHER PRO V7.3 — LIVRAISON COMPLÈTE
+
+1. Télécharger le dossier projet complet.
+2. Conserver ensemble LauncherPro.py, core/, ui/ et data/.
+3. Exécuter install.py une fois dans Pyto.
+4. Lancer LauncherPro.py.
+5. Pour le widget, ouvrir launcher_widget.py dans Pyto et l’exécuter une fois avant de l’ajouter à l’écran d’accueil.
+
+Cette livraison est autonome. Ne mélange pas ses fichiers avec une ancienne V5, V6 ou V7.
