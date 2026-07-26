@@ -5,12 +5,37 @@
   "branch": "assistantai-new",
   "root_folder": "Scriptable/AssistantAI_new",
   "entrypoint": "projet/main.py",
-  "status": "work-in-progress",
+  "status": "ready-for-iphone-test",
   "source_project": "Scriptable/AssistantIA_v5",
-  "notes": [
+  "files": [
+    "README.md",
+    ".gitignore",
+    "02_MANIFEST.json",
+    "TESTS_IPHONE.md",
+    "projet/main.py",
+    "projet/diagnostic.py",
+    "projet/ui_app.py",
+    "projet/app.py",
+    "projet/conversation.py",
+    "projet/storage.py",
+    "projet/api_client.py",
+    "projet/config.py",
+    "projet/config_local.example.py",
+    "projet/data/.gitkeep",
+    "projet/database/.gitkeep",
+    "tests/test_assistantai.py"
+  ],
+  "corrections": [
     "Version applicative alignée sur 5.0.1",
-    "Le projet doit reprendre les fichiers Codex stabilisés",
-    "Validation Pyto/iPhone encore requise",
-    "config_local.py et les bases SQLite ne doivent jamais être versionnés"
+    "PresentationMode.FULLSCREEN utilisé avec repli legacy",
+    "Mises à jour UI renvoyées sur le thread principal via mainthread.run_async",
+    "Client OpenAI Responses robuste avec recherche Web et sources",
+    "Stockage SQLite transactionnel et utilisable entre threads",
+    "Secrets, bases locales et caches exclus de Git"
+  ],
+  "remaining_validation": [
+    "Exécuter diagnostic.py dans Pyto",
+    "Tester trois messages successifs",
+    "Tester le clavier, le Web, la persistance et le bouton Fermer"
   ]
 }
