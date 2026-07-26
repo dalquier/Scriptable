@@ -1,0 +1,19 @@
+{
+  "project": "Pyto App Framework",
+  "version": "6.0.0",
+  "created_at": "2026-07-26T12:05:39+02:00",
+  "repository": "dalquier/Scriptable",
+  "branch": "main",
+  "entrypoint": "projet/main.py",
+  "platform": "Pyto on iOS",
+  "ui": "pyto_ui.WebView",
+  "files": [
+    "projet/main.py",
+    "projet/app.py",
+    "projet/state_store.py",
+    "projet/native_services.py",
+    "projet/ui/index.html",
+    "projet/ui/app.css",
+    "projet/ui/app.js"
+  ]
+}
