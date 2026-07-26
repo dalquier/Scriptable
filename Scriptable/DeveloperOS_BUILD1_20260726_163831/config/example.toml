@@ -1,0 +1,5 @@
+[developeros]
+app_name = "DeveloperOS"
+environment = "development"
+log_level = "INFO"
+health_enabled = true
