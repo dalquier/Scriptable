@@ -1,0 +1,12 @@
+Construire progressivement DeveloperOS Draft v0.1 de la manière la plus simple possible.
+
+Objectif immédiat :
+- conserver un état persistant ;
+- reprendre automatiquement après interruption ;
+- appeler l'API OpenAI ;
+- continuer automatiquement quand le statut vaut continue ou que la réponse se termine par En cours ;
+- s'arrêter sur done, blocked, erreur ou limite d'itérations ;
+- rester compatible avec Pyto et Python 3.10 ;
+- éviter les dépendances externes.
+
+À chaque itération, proposer puis réaliser une seule petite étape vérifiable.
