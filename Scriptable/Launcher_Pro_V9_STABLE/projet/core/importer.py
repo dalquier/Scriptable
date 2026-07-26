@@ -9,14 +9,13 @@ from __future__ import annotations
 
 import ast
 import shutil
-import uuid
 from dataclasses import replace
 from pathlib import Path
 from typing import Iterable
 
 from core.logger import log
 from core.models import LauncherItem
-from core.paths import PROJECTS_DIR, SCRIPTS_DIR, ensure_runtime_directories
+from core.paths import PROJECTS_DIR, SCRIPTS_DIR, ensure_directories
 
 
 class ImporterError(RuntimeError):
@@ -106,7 +105,6 @@ def suggest_entry_points(files: Iterable[str]) -> list[str]:
         "start.py": 4,
         "__main__.py": 5,
     }
-
     return sorted(
         candidates,
         key=lambda value: (
@@ -119,7 +117,7 @@ def suggest_entry_points(files: Iterable[str]) -> list[str]:
 
 def import_script(source_path: str | Path, display_name: str | None = None) -> LauncherItem:
     """Copie un script dans library/scripts et construit son entrée de registre."""
-    ensure_runtime_directories()
+    ensure_directories()
     source = validate_python_file(source_path)
     name = (display_name or source.stem).strip() or source.stem
     destination_directory = _unique_destination(SCRIPTS_DIR, name)
@@ -133,31 +131,28 @@ def import_script(source_path: str | Path, display_name: str | None = None) -> L
         shutil.rmtree(destination_directory, ignore_errors=True)
         raise
 
-    item = LauncherItem(
-        id=uuid.uuid4().hex,
+    item = LauncherItem.create_script(
         name=name,
-        kind="script",
         local_path=str(destination_file),
-        entry_point=None,
+        source_path=str(source),
     )
-    item.validate()
     log("IMPORT", f"Script importé : {item.name} ({item.id})")
     return item
 
 
 def import_project(
     source_directory: str | Path,
-    entry_point: str,
+    entry_script: str,
     display_name: str | None = None,
 ) -> LauncherItem:
     """Copie un projet complet et valide son point d'entrée Python."""
-    ensure_runtime_directories()
+    ensure_directories()
     source = Path(source_directory).expanduser().resolve()
     if not source.exists() or not source.is_dir():
         raise ImporterError(f"Dossier projet introuvable : {source}")
 
     python_files = discover_python_files(source)
-    normalized_entry = Path(entry_point).as_posix().lstrip("/")
+    normalized_entry = Path(entry_script).as_posix().lstrip("/")
     if normalized_entry not in python_files:
         raise ImporterError(
             "Le point d'entrée choisi ne fait pas partie des fichiers Python détectés"
@@ -180,14 +175,12 @@ def import_project(
         shutil.rmtree(destination, ignore_errors=True)
         raise
 
-    item = LauncherItem(
-        id=uuid.uuid4().hex,
+    item = LauncherItem.create_project(
         name=name,
-        kind="project",
         local_path=str(destination),
-        entry_point=normalized_entry,
+        entry_script=normalized_entry,
+        source_path=str(source),
     )
-    item.validate()
     log("IMPORT", f"Projet importé : {item.name} / entrée {normalized_entry}")
     return item
 
@@ -200,14 +193,12 @@ def rename_imported_folder(item: LauncherItem, new_name: str) -> LauncherItem:
 
     current = Path(item.local_path)
     current_root = current.parent if item.kind == "script" else current
-    parent = current_root.parent
-    target = _unique_destination(parent, clean_name)
-    current_root.rename(target)
+    if not current_root.exists():
+        raise ImporterError(f"Dossier local introuvable : {current_root}")
 
-    if item.kind == "script":
-        new_local_path = str(target / current.name)
-    else:
-        new_local_path = str(target)
+    target = _unique_destination(current_root.parent, clean_name)
+    current_root.rename(target)
+    new_local_path = str(target / current.name) if item.kind == "script" else str(target)
 
     updated = replace(item, name=clean_name, local_path=new_local_path)
     updated.validate()
