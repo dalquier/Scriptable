@@ -15,11 +15,15 @@ import traceback
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from threading import Lock
 from types import ModuleType
 
 from .logger import log, log_exception
 from .models import LauncherItem
 from .registry import Registry
+
+
+_EXECUTION_LOCK = Lock()
 
 
 class RunnerError(RuntimeError):
@@ -73,6 +77,12 @@ def resolve_target(item: LauncherItem) -> tuple[Path, Path]:
 def execute_item(item: LauncherItem) -> RunResult:
     """Exécute un élément et restaure systématiquement l'environnement global."""
 
+    with _EXECUTION_LOCK:
+        return _execute_item_locked(item)
+
+
+def _execute_item_locked(item: LauncherItem) -> RunResult:
+    """Implémentation sérialisée protégeant l'état global de l'interpréteur."""
     target, working_directory = resolve_target(item)
     started = time.perf_counter()
 

@@ -1,0 +1,5 @@
+__pycache__/
+*.py[cod]
+projet/data/
+projet/library/
+projet/logs/
