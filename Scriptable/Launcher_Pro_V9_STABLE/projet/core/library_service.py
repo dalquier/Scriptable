@@ -1,7 +1,7 @@
 """Services métier de Launcher Pro.
 
-Cette couche coordonne l'importeur et le registre. L'interface utilisateur ne
-manipule ni les fichiers JSON ni les copies de dossiers directement.
+Cette couche coordonne l'importeur, le registre et le moteur d'exécution.
+L'interface utilisateur n'accède jamais directement aux fichiers techniques.
 """
 
 from __future__ import annotations
@@ -20,10 +20,11 @@ from core.importer import (
 from core.logger import log
 from core.models import LauncherItem
 from core.registry import Registry
+from core.runner import RunResult, run_registered_item
 
 
 class LibraryService:
-    """Façade unique pour gérer la bibliothèque Launcher Pro."""
+    """Façade unique pour gérer et exécuter la bibliothèque Launcher Pro."""
 
     def __init__(self, registry: Registry | None = None) -> None:
         self.registry = registry or Registry.load()
@@ -65,6 +66,11 @@ class LibraryService:
             raise
         return item
 
+    def run(self, item_id: str) -> RunResult:
+        """Lance un élément après fermeture de l'interface appelante."""
+        log("LIBRARY", f"Demande de lancement : {item_id}")
+        return run_registered_item(self.registry, item_id)
+
     def rename(self, item_id: str, new_name: str) -> LauncherItem:
         item = self.registry.require(item_id)
         updated = rename_imported_folder(item, new_name)
@@ -74,7 +80,7 @@ class LibraryService:
             log(
                 "LIBRARY",
                 "Le dossier a été renommé mais la mise à jour du registre a échoué",
-                level="ERROR",
+                force=True,
             )
             raise
         return updated
@@ -103,7 +109,7 @@ class LibraryService:
         local = Path(item.local_path)
         target = local.parent if item.kind == "script" else local
         if not target.exists():
-            log("LIBRARY", f"Fichiers déjà absents : {target}", level="WARNING")
+            log("LIBRARY", f"Fichiers déjà absents : {target}", force=True)
             return
         log("LIBRARY", f"Suppression physique : {target}")
         shutil.rmtree(target)
