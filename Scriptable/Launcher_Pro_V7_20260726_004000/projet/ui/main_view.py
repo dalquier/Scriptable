@@ -14,6 +14,15 @@ from core.url_scheme import build_open_url, build_run_url, copy_text
 from . import theme
 
 
+def _alignment(name: str, legacy):
+    enum = getattr(ui, "TextAlignment", None)
+    return getattr(enum, name, legacy) if enum is not None else legacy
+
+
+ALIGN_CENTER = _alignment("CENTER", getattr(ui, "TEXT_ALIGNMENT_CENTER", 1))
+ALIGN_RIGHT = _alignment("RIGHT", getattr(ui, "TEXT_ALIGNMENT_RIGHT", 2))
+
+
 class LauncherProView:
     def __init__(self) -> None:
         self.registry = Registry.load()
@@ -30,35 +39,34 @@ class LauncherProView:
         self.topbar = ui.View()
         self.topbar.background_color = theme.SURFACE
         self.topbar.corner_radius = 20
-        self.logo = self._label("▶", 19, True, theme.TEXT)
+
+        self.logo = self._label("▶", 18, True, theme.TEXT)
         self.logo.background_color = theme.PRIMARY
-        self.logo.corner_radius = 12
-        self.logo.text_alignment = ui.TEXT_ALIGNMENT_CENTER
-        self.title = self._label("Launcher Pro", 23, True, theme.TEXT)
-        self.subtitle = self._label("Bibliothèque Pyto", 12, False, theme.MUTED)
+        self.logo.corner_radius = 11
+        self.logo.text_alignment = ALIGN_CENTER
+
+        self.title = self._label("Launcher Pro", 22, True, theme.TEXT)
+        self.subtitle = self._label("Scripts et projets Pyto", 12, False, theme.MUTED)
+
         self.link_button = ui.Button(title="URL")
         self.link_button.background_color = theme.SURFACE_ALT
         self.link_button.tint_color = theme.PRIMARY
         self.link_button.corner_radius = 11
         self.link_button.action = self.copy_launcher_url
-        self.close_button = ui.Button(title="Fermer")
-        self.close_button.background_color = theme.SURFACE_ALT
-        self.close_button.tint_color = theme.DANGER
-        self.close_button.corner_radius = 11
-        self.close_button.action = self.on_close
-        for sub in (self.logo, self.title, self.subtitle, self.link_button, self.close_button):
+
+        for sub in (self.logo, self.title, self.subtitle, self.link_button):
             self.topbar.add_subview(sub)
 
         self.metrics = ui.View()
         self.metrics.background_color = theme.PRIMARY_SOFT
-        self.metrics.corner_radius = 15
-        self.metric_items = self._label("0 élément", 13, True, theme.TEXT)
-        self.metric_favorites = self._label("0 favori", 12, False, theme.MUTED)
-        self.metric_runs = self._label("0 lancement", 12, False, theme.MUTED)
+        self.metrics.corner_radius = 14
+        self.metric_items = self._label("0 élément", 12, True, theme.TEXT)
+        self.metric_favorites = self._label("0 favori", 11, False, theme.MUTED)
+        self.metric_runs = self._label("0 lancement", 11, False, theme.MUTED)
         for sub in (self.metric_items, self.metric_favorites, self.metric_runs):
             self.metrics.add_subview(sub)
 
-        self.search = ui.TextField(placeholder="Rechercher un nom ou une catégorie")
+        self.search = ui.TextField(placeholder="Rechercher")
         self.search.background_color = theme.SURFACE
         self.search.text_color = theme.TEXT
         self.search.corner_radius = 13
@@ -78,23 +86,31 @@ class LauncherProView:
         self.filter_projects = ui.Button(title="Projets")
         for button in (self.filter_all, self.filter_scripts, self.filter_projects):
             button.corner_radius = 10
+            self.filter_bar.add_subview(button)
         self.filter_all.action = lambda sender: self.set_filter(None)
         self.filter_scripts.action = lambda sender: self.set_filter("script")
         self.filter_projects.action = lambda sender: self.set_filter("project")
-        for button in (self.filter_all, self.filter_scripts, self.filter_projects):
-            self.filter_bar.add_subview(button)
 
         self.section_title = self._label("Bibliothèque", 18, True, theme.TEXT)
         self.status = self._label("Prêt", 11, False, theme.MUTED)
-        self.status.text_alignment = ui.TEXT_ALIGNMENT_RIGHT
+        self.status.text_alignment = ALIGN_RIGHT
+
         self.scroll = ui.ScrollView()
         self.scroll.background_color = theme.BACKGROUND
+        self.scroll_host = getattr(self.scroll, "content_view", self.scroll)
 
         for control in (
-            self.topbar, self.metrics, self.search, self.add_button,
-            self.filter_bar, self.section_title, self.status, self.scroll,
+            self.topbar,
+            self.metrics,
+            self.search,
+            self.add_button,
+            self.filter_bar,
+            self.section_title,
+            self.status,
+            self.scroll,
         ):
             self.view.add_subview(control)
+
         self.refresh()
 
     @staticmethod
@@ -111,31 +127,30 @@ class LauncherProView:
         margin = 14
         usable = max(300, width - margin * 2)
 
-        self.topbar.frame = (margin, 12, usable, 78)
-        self.logo.frame = (12, 15, 48, 48)
-        self.title.frame = (72, 12, usable - 224, 30)
-        self.subtitle.frame = (72, 41, usable - 224, 22)
-        self.link_button.frame = (usable - 142, 20, 54, 38)
-        self.close_button.frame = (usable - 82, 20, 70, 38)
+        self.topbar.frame = (margin, 12, usable, 72)
+        self.logo.frame = (12, 13, 46, 46)
+        self.title.frame = (70, 10, usable - 142, 29)
+        self.subtitle.frame = (70, 38, usable - 142, 21)
+        self.link_button.frame = (usable - 66, 17, 54, 38)
 
-        self.metrics.frame = (margin, 100, usable, 46)
-        self.metric_items.frame = (14, 8, usable * 0.36, 30)
-        self.metric_favorites.frame = (usable * 0.39, 8, usable * 0.28, 30)
-        self.metric_runs.frame = (usable * 0.67, 8, usable * 0.30, 30)
+        self.metrics.frame = (margin, 94, usable, 42)
+        self.metric_items.frame = (12, 6, usable * 0.37, 30)
+        self.metric_favorites.frame = (usable * 0.40, 6, usable * 0.27, 30)
+        self.metric_runs.frame = (usable * 0.68, 6, usable * 0.29, 30)
 
         search_width = max(170, usable - 112)
-        self.search.frame = (margin, 156, search_width, 44)
-        self.add_button.frame = (margin + search_width + 8, 156, 104, 44)
+        self.search.frame = (margin, 146, search_width, 43)
+        self.add_button.frame = (margin + search_width + 8, 146, 104, 43)
 
-        self.filter_bar.frame = (margin, 210, usable, 40)
-        segment_width = (usable - 8) / 3
-        self.filter_all.frame = (4, 4, segment_width - 4, 32)
-        self.filter_scripts.frame = (segment_width + 2, 4, segment_width - 4, 32)
-        self.filter_projects.frame = (segment_width * 2, 4, segment_width - 4, 32)
+        self.filter_bar.frame = (margin, 199, usable, 39)
+        segment = (usable - 8) / 3
+        self.filter_all.frame = (4, 4, segment - 4, 31)
+        self.filter_scripts.frame = (segment + 2, 4, segment - 4, 31)
+        self.filter_projects.frame = (segment * 2, 4, segment - 4, 31)
 
-        self.section_title.frame = (margin, 260, usable * 0.55, 26)
-        self.status.frame = (margin + usable * 0.45, 262, usable * 0.55, 22)
-        scroll_y = 292
+        self.section_title.frame = (margin, 247, usable * 0.55, 26)
+        self.status.frame = (margin + usable * 0.42, 249, usable * 0.58, 22)
+        scroll_y = 278
         self.scroll.frame = (0, scroll_y, width, max(1, height - scroll_y))
         self.layout_cards()
 
@@ -143,14 +158,14 @@ class LauncherProView:
         y = 6
         width = max(300, self.scroll.width - 28)
         for card in self.cards:
-            card["container"].frame = (14, y, width, 96)
-            card["badge"].frame = (12, 17, 50, 50)
-            card["name"].frame = (74, 11, width - 238, 27)
-            card["detail"].frame = (74, 38, width - 238, 20)
-            card["meta"].frame = (74, 60, width - 238, 20)
-            card["edit"].frame = (width - 158, 27, 70, 42)
-            card["run"].frame = (width - 82, 23, 68, 50)
-            y += 106
+            card["container"].frame = (14, y, width, 92)
+            card["badge"].frame = (12, 16, 48, 48)
+            card["name"].frame = (72, 10, width - 240, 26)
+            card["detail"].frame = (72, 36, width - 240, 19)
+            card["meta"].frame = (72, 57, width - 240, 19)
+            card["edit"].frame = (width - 160, 25, 72, 40)
+            card["run"].frame = (width - 82, 21, 68, 48)
+            y += 101
         self.scroll.content_size = (self.scroll.width, max(self.scroll.height + 1, y + 8))
 
     def clear_cards(self) -> None:
@@ -193,8 +208,8 @@ class LauncherProView:
         container = ui.View()
         container.background_color = theme.CARD
         container.corner_radius = 18
-        badge = self._label("＋", 25, True, theme.PRIMARY)
-        badge.text_alignment = ui.TEXT_ALIGNMENT_CENTER
+        badge = self._label("＋", 24, True, theme.PRIMARY)
+        badge.text_alignment = ALIGN_CENTER
         name = self._label("Aucun élément", 17, True, theme.TEXT)
         detail = self._label("Ajoute un script autonome ou un projet Pyto.", 12, False, theme.MUTED)
         meta = self._label("", 11, False, theme.MUTED)
@@ -202,34 +217,39 @@ class LauncherProView:
         run = ui.Button(title="")
         for sub in (badge, name, detail, meta, edit, run):
             container.add_subview(sub)
-        self.scroll.add_subview(container)
+        self.scroll_host.add_subview(container)
         self.cards.append({"container": container, "badge": badge, "name": name, "detail": detail, "meta": meta, "edit": edit, "run": run})
 
     def _add_card(self, item) -> None:
         container = ui.View()
         container.background_color = theme.CARD
         container.corner_radius = 18
+
         badge = self._label("APP" if item.kind == "project" else "PY", 14, True, theme.PRIMARY)
         badge.background_color = theme.PRIMARY_SOFT
         badge.corner_radius = 12
-        badge.text_alignment = ui.TEXT_ALIGNMENT_CENTER
+        badge.text_alignment = ALIGN_CENTER
+
         name = self._label(item.name, 17, True, theme.TEXT)
         detail_text = item.entry_script if item.kind == "project" else item.category
         detail = self._label(("Projet · " if item.kind == "project" else "Script · ") + detail_text, 11, False, theme.MUTED)
         meta = self._label(self._status_text(item), 11, False, theme.MUTED)
+
         edit = ui.Button(title="Modifier")
         edit.background_color = theme.SURFACE_ALT
         edit.tint_color = theme.PRIMARY
         edit.corner_radius = 11
         edit.action = lambda sender, item_id=item.id: self.edit_item(item_id)
+
         run = ui.Button(title="Lancer")
         run.background_color = theme.PRIMARY
         run.tint_color = theme.TEXT
         run.corner_radius = 13
         run.action = lambda sender, item_id=item.id: self.launch(item_id)
+
         for sub in (badge, name, detail, meta, edit, run):
             container.add_subview(sub)
-        self.scroll.add_subview(container)
+        self.scroll_host.add_subview(container)
         self.cards.append({"container": container, "badge": badge, "name": name, "detail": detail, "meta": meta, "edit": edit, "run": run})
 
     @staticmethod
@@ -251,6 +271,8 @@ class LauncherProView:
         self.refresh()
 
     def on_add(self, sender) -> None:
+        if self.busy:
+            return
         alert = ui.Alert(title="Ajouter", message="Choisis le type d’élément")
         alert.add_action("Annuler")
         alert.add_action("Script autonome")
@@ -265,69 +287,48 @@ class LauncherProView:
         if self.busy:
             return
         self.busy = True
-        self.status.text = "Sélection du script…"
-
-        def worker():
-            try:
-                item = import_script(pick_file(), registry=Registry.load())
-                error = None
-            except Exception as exc:
-                item, error = None, str(exc)
-
-            def finish():
-                self.busy = False
-                if error:
-                    self.status.text = "Import impossible"
-                    self._alert("Import impossible", error)
-                    return
-                self.status.text = f"{item.name} ajouté"
-                self.refresh()
-                self.edit_item(item.id)
-            self._on_main_thread(finish)
-
-        threading.Thread(target=worker, daemon=True).start()
+        self.status.text = "Ouverture de Fichiers…"
+        try:
+            path = pick_file()
+            item = import_script(path, registry=Registry.load())
+        except Exception as exc:
+            self.status.text = "Import impossible"
+            self._alert("Import impossible", str(exc))
+        else:
+            self.status.text = f"{item.name} ajouté"
+            self.refresh()
+            self.edit_item(item.id)
+        finally:
+            self.busy = False
 
     def on_add_project(self, sender) -> None:
         if self.busy:
             return
         self.busy = True
-        self.status.text = "Sélection du dossier…"
+        self.status.text = "Ouverture de Fichiers…"
+        try:
+            root = pick_directory()
+            files = list_python_files(root, recursive=True)
+            selected = self._choose_entry_script(root, files)
+            if selected is None:
+                self.status.text = "Ajout annulé"
+                return
+        except Exception as exc:
+            self.status.text = "Sélection impossible"
+            self._alert("Projet non ajouté", str(exc))
+            self.busy = False
+            return
 
-        def worker():
-            try:
-                root = pick_directory()
-                files = list_python_files(root, recursive=True)
-                error = None
-            except Exception as exc:
-                root, files, error = None, [], str(exc)
-
-            def finish():
-                self.busy = False
-                if error:
-                    self.status.text = "Sélection impossible"
-                    self._alert("Projet non ajouté", error)
-                    return
-                selected = self._choose_entry_script(root, files)
-                if selected is None:
-                    self.status.text = "Ajout annulé"
-                    return
-                self._copy_project(root, selected)
-            self._on_main_thread(finish)
-
-        threading.Thread(target=worker, daemon=True).start()
-
-    def _copy_project(self, root: str, selected: str) -> None:
-        self.busy = True
         self.status.text = "Copie du projet…"
 
-        def worker():
+        def worker() -> None:
             try:
                 item = add_project(root, selected, registry=Registry.load())
                 error = None
             except Exception as exc:
                 item, error = None, str(exc)
 
-            def finish():
+            def finish() -> None:
                 self.busy = False
                 if error:
                     self.status.text = "Ajout impossible"
@@ -336,6 +337,7 @@ class LauncherProView:
                 self.status.text = f"{item.name} ajouté"
                 self.refresh()
                 self.edit_item(item.id)
+
             self._on_main_thread(finish)
 
         threading.Thread(target=worker, daemon=True).start()
@@ -346,7 +348,14 @@ class LauncherProView:
             return None
         root_path = Path(root)
         preferred = ["main.py", "bootstrap.py", "app.py", "run.py", "launcher.py"]
-        ordered = sorted(files, key=lambda p: (preferred.index(p.name.lower()) if p.name.lower() in preferred else 99, len(p.relative_to(root_path).parts), p.name.lower()))
+        ordered = sorted(
+            files,
+            key=lambda p: (
+                preferred.index(p.name.lower()) if p.name.lower() in preferred else 99,
+                len(p.relative_to(root_path).parts),
+                p.name.lower(),
+            ),
+        )
         shown = ordered[:18]
         alert = ui.Alert(title="Point d’entrée", message="Choisis le script à lancer")
         alert.add_action("Annuler")
@@ -360,7 +369,7 @@ class LauncherProView:
     def edit_item(self, item_id: str) -> None:
         registry = Registry.load()
         item = registry.require(item_id)
-        alert = ui.Alert(title="Modifier l’élément", message="Nom, catégorie et options")
+        alert = ui.Alert(title="Modifier", message="Nom, catégorie et configuration")
         name_field = ui.TextField(text=item.name)
         category_field = ui.TextField(text=item.category)
         alert.add_text_field(name_field)
@@ -422,12 +431,12 @@ class LauncherProView:
         item = registry.require(item_id)
         self.status.text = f"Lancement de {item.name}…"
 
-        def worker():
+        def worker() -> None:
             result = run_item(item)
             append_history(item, result)
             registry.update(item)
 
-            def finish():
+            def finish() -> None:
                 self.busy = False
                 self.refresh()
                 if result.success:
@@ -437,15 +446,10 @@ class LauncherProView:
                 else:
                     self.status.text = f"Erreur dans {item.name}"
                     self._alert("Erreur d’exécution", (result.error or "Erreur inconnue")[-2200:])
+
             self._on_main_thread(finish)
 
         threading.Thread(target=worker, daemon=True).start()
-
-    def on_close(self, sender) -> None:
-        if self.busy:
-            self._alert("Opération en cours", "Attends la fin de l’opération.")
-            return
-        self.view.close()
 
     @staticmethod
     def _on_main_thread(callback) -> None:
@@ -459,10 +463,14 @@ class LauncherProView:
         alert.show()
 
     def present(self) -> None:
-        mode = getattr(ui, "PRESENTATION_MODE_SHEET", None)
+        enum = getattr(ui, "PresentationMode", None)
+        mode = getattr(enum, "SHEET", None) if enum is not None else None
         if mode is None:
-            mode = getattr(ui, "PRESENTATION_MODE_FORM_SHEET", None)
-        ui.show_view(self.view, mode) if mode is not None else ui.show_view(self.view)
+            mode = getattr(ui, "PRESENTATION_MODE_SHEET", None)
+        if mode is None:
+            ui.show_view(self.view)
+        else:
+            ui.show_view(self.view, mode)
 
 
 def present_launcher() -> None:
