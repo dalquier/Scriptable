@@ -28,9 +28,14 @@ class PytoAppFramework:
         root.title = "Pyto App Framework"
         root.background_color = ui.COLOR_SYSTEM_BACKGROUND
 
+        # Certaines versions de pyto_ui n'exposent pas View.bounds.
+        # On attribue donc une taille initiale explicite, puis `flex`
+        # adapte automatiquement la WebView au plein écran.
+        root.frame = (0, 0, 390, 844)
+
         webview = ui.WebView()
+        webview.frame = (0, 0, 390, 844)
         webview.flex = [ui.FLEXIBLE_WIDTH, ui.FLEXIBLE_HEIGHT]
-        webview.frame = root.bounds
         webview.delegate = self
 
         root.add_subview(webview)
@@ -66,7 +71,7 @@ class PytoAppFramework:
         return {
             "state": self.store.snapshot(),
             "capabilities": native_capabilities(),
-            "version": "6.0.0",
+            "version": "6.0.1",
         }
 
     def web_view_should_start_load(self, webview: ui.WebView, url: str, navigation_type: int) -> bool:
