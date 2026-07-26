@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import traceback
-import urllib.parse
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +12,8 @@ from state_store import StateStore
 
 
 class PytoAppFramework:
+    BRIDGE_NAME = "pytoBridge"
+
     def __init__(self, root_dir: Path) -> None:
         self.root_dir = root_dir
         self.ui_dir = root_dir / "ui"
@@ -27,23 +28,19 @@ class PytoAppFramework:
         root = ui.View()
         root.title = "Pyto App Framework"
         root.background_color = ui.COLOR_SYSTEM_BACKGROUND
-
-        # Certaines versions de pyto_ui n'exposent pas View.bounds.
-        # On attribue donc une taille initiale explicite, puis `flex`
-        # adapte automatiquement la WebView au plein écran.
         root.frame = (0, 0, 390, 844)
 
         webview = ui.WebView()
         webview.frame = (0, 0, 390, 844)
         webview.flex = [ui.FLEXIBLE_WIDTH, ui.FLEXIBLE_HEIGHT]
-        webview.delegate = self
+        webview.did_receive_message = self._did_receive_message
+        webview.register_message_handler(self.BRIDGE_NAME)
 
         root.add_subview(webview)
         self.root_view = root
         self.webview = webview
 
-        html = self._build_html()
-        webview.load_html(html)
+        webview.load_html(self._build_html())
         ui.show_view(root, ui.PRESENTATION_MODE_FULLSCREEN)
 
     def _validate_files(self) -> None:
@@ -71,25 +68,29 @@ class PytoAppFramework:
         return {
             "state": self.store.snapshot(),
             "capabilities": native_capabilities(),
-            "version": "6.0.1",
+            "version": "6.0.3",
         }
 
-    def web_view_should_start_load(self, webview: ui.WebView, url: str, navigation_type: int) -> bool:
-        if not url.startswith("pytoapp://"):
-            return True
+    def _did_receive_message(self, webview: ui.WebView, name: str, message: object) -> None:
+        if name != self.BRIDGE_NAME:
+            return
+
         try:
-            self._handle_url(url)
+            if not isinstance(message, dict):
+                raise ValueError("Message JavaScript invalide.")
+
+            action = str(message.get("action", "")).strip()
+            parameters = message.get("parameters") or {}
+            if not isinstance(parameters, dict):
+                raise ValueError("Paramètres JavaScript invalides.")
+
+            self._handle_action(action, parameters)
         except Exception as exc:
             traceback.print_exc()
             show_alert("Erreur", str(exc))
             self._send_event("appError", {"message": str(exc)})
-        return False
 
-    def _handle_url(self, url: str) -> None:
-        parsed = urllib.parse.urlparse(url)
-        action = parsed.netloc or parsed.path.lstrip("/")
-        query = urllib.parse.parse_qs(parsed.query)
-
+    def _handle_action(self, action: str, parameters: dict[str, Any]) -> None:
         if action == "ready":
             self._send_state()
             return
@@ -108,8 +109,8 @@ class PytoAppFramework:
             open_url("https://pyto.app")
             self.store.add_activity("Site Pyto ouvert")
         elif action == "set-preference":
-            key = self._first(query, "key")
-            value = self._first(query, "value")
+            key = self._required(parameters, "key")
+            value = self._required(parameters, "value")
             self.store.update_preference(key, value)
         elif action == "reset":
             self.store.reset()
@@ -119,11 +120,11 @@ class PytoAppFramework:
         self._send_state()
 
     @staticmethod
-    def _first(query: dict[str, list[str]], key: str) -> str:
-        values = query.get(key)
-        if not values:
+    def _required(parameters: dict[str, Any], key: str) -> str:
+        value = parameters.get(key)
+        if value is None or str(value).strip() == "":
             raise ValueError(f"Paramètre manquant : {key}")
-        return values[0]
+        return str(value)
 
     def _send_state(self) -> None:
         self._send_event("stateChanged", self._payload())
@@ -131,10 +132,11 @@ class PytoAppFramework:
     def _send_event(self, name: str, detail: dict[str, Any]) -> None:
         if self.webview is None:
             return
+
         event_name = json.dumps(name, ensure_ascii=False)
         payload = json.dumps(detail, ensure_ascii=False).replace("</", "<\\/")
         script = (
             "window.dispatchEvent(new CustomEvent(" + event_name + ","
             "{detail:" + payload + "}));"
         )
-        self.webview.evaluate_javascript(script)
+        self.webview.evaluate_js(script)
