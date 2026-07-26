@@ -1,0 +1,22 @@
+{
+  "project": "GitHub Content Manager",
+  "version": "6.0.0",
+  "target": "Pyto 19 / Python 3.10+",
+  "entrypoint": "projet/main.py",
+  "repository": "dalquier/Scriptable",
+  "branch": "main",
+  "default_root_path": "Scriptable",
+  "interface": "native pyto_ui",
+  "files": [
+    "00_README.md",
+    "01_ARBORESCENCE.md",
+    "02_MANIFEST.json",
+    "03_INSTALLATION.md",
+    "04_CHANGELOG.md",
+    "projet/main.py",
+    "projet/native_app.py",
+    "projet/github_api.py",
+    "projet/storage.py",
+    "projet/config.example.json"
+  ]
+}
