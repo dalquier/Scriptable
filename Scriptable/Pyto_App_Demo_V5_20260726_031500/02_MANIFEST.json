@@ -1,0 +1,36 @@
+{
+  "project_name": "Pyto App Demo V5",
+  "version": "5.0.0",
+  "runtime": "Pyto iOS",
+  "entrypoint": "projet/main.py",
+  "ui": {
+    "type": "hybrid_webview_uikit",
+    "web_engine": "WKWebView",
+    "native_framework": "UIKit"
+  },
+  "features": [
+    "application_shell",
+    "tab_navigation",
+    "dark_mode",
+    "json_persistence",
+    "javascript_python_bridge",
+    "native_alert",
+    "native_share_sheet",
+    "external_url",
+    "activity_log"
+  ],
+  "files": [
+    "00_README.md",
+    "01_ARBORESCENCE.md",
+    "02_MANIFEST.json",
+    "03_INSTALLATION.md",
+    "04_CHANGELOG.md",
+    "projet/main.py",
+    "projet/app_state.py",
+    "projet/native_services.py",
+    "projet/webview_app.py",
+    "projet/ui/index.html",
+    "projet/ui/app.css",
+    "projet/ui/app.js"
+  ]
+}
