@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>Pyto App Framework</title>
+  <style>/*__APP_CSS__*/</style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">PYTO APP FRAMEWORK</div>
+        <h1 id="greeting">Bonjour</h1>
+      </div>
+      <button class="icon-button" data-action="open-pyto" aria-label="Ouvrir Pyto">↗</button>
+    </header>
+
+    <main>
+      <section class="screen active" data-screen="home">
+        <article class="hero-card">
+          <span class="badge">V6</span>
+          <h2>Une application iPhone dans Pyto</h2>
+          <p>WebView pour le design, Python pour le moteur et les services iOS.</p>
+          <button class="primary-button" data-action="primary-action">Exécuter une action</button>
+        </article>
+
+        <div class="stats-grid">
+          <article class="stat-card"><span>Ouvertures</span><strong id="launch-count">0</strong></article>
+          <article class="stat-card"><span>Actions</span><strong id="action-count">0</strong></article>
+        </div>
+
+        <article class="panel">
+          <div class="panel-title">Dernière action</div>
+          <div id="last-action" class="last-action">Aucune</div>
+        </article>
+      </section>
+
+      <section class="screen" data-screen="activity">
+        <h2>Activité</h2>
+        <div id="activity-list" class="activity-list"></div>
+      </section>
+
+      <section class="screen" data-screen="architecture">
+        <h2>Architecture</h2>
+        <article class="panel stack">
+          <div><strong>Interface</strong><span>HTML, CSS et JavaScript</span></div>
+          <div><strong>Hôte</strong><span>pyto_ui.WebView</span></div>
+          <div><strong>Moteur</strong><span>Python</span></div>
+          <div><strong>Services</strong><span>Alertes, URL, partage</span></div>
+        </article>
+        <button class="secondary-button" data-action="share">Partager le résumé</button>
+      </section>
+
+      <section class="screen" data-screen="settings">
+        <h2>Réglages</h2>
+        <label class="field">
+          <span>Nom affiché</span>
+          <input id="display-name" type="text" autocomplete="off">
+        </label>
+        <label class="field">
+          <span>Thème</span>
+          <select id="theme-select">
+            <option value="system">Système</option>
+            <option value="light">Clair</option>
+            <option value="dark">Sombre</option>
+          </select>
+        </label>
+        <button class="danger-button" data-action="reset">Réinitialiser les données</button>
+      </section>
+    </main>
+
+    <nav class="tabbar" aria-label="Navigation principale">
+      <button class="tab active" data-target="home"><span>⌂</span><small>Accueil</small></button>
+      <button class="tab" data-target="activity"><span>◷</span><small>Activité</small></button>
+      <button class="tab" data-target="architecture"><span>◇</span><small>Structure</small></button>
+      <button class="tab" data-target="settings"><span>⚙</span><small>Réglages</small></button>
+    </nav>
+  </div>
+
+  <script>window.__INITIAL_STATE__ = /*__INITIAL_STATE__*/;</script>
+  <script>/*__APP_JS__*/</script>
+</body>
+</html>
