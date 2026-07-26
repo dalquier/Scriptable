@@ -5,9 +5,7 @@ from typing import Optional
 
 import pyto_ui as ui
 
-from core.importer import add_project, import_script, list_python_files, pick_directory, pick_file
 from core.registry import Registry
-from core.service import rename_item, run_by_id
 from . import theme
 
 
@@ -18,18 +16,23 @@ def _enum(container_name: str, member: str, legacy_name: str, fallback):
     return getattr(ui, legacy_name, fallback)
 
 
-ALIGN_CENTER = _enum("TextAlignment", "CENTER", "TEXT_ALIGNMENT_CENTER", 1)
 SHEET = _enum("PresentationMode", "SHEET", "PRESENTATION_MODE_SHEET", None)
 
 
 class LauncherProView:
+    """Une vue ne fait qu’afficher et renvoyer une action.
+
+    Les sélecteurs de fichiers et l’exécution sont lancés seulement après la
+    fermeture de cette vue, afin d’éviter les conflits de présentation iOS.
+    """
+
     def __init__(self) -> None:
         self.registry = Registry.load()
         self.query = ""
         self.filter_kind: Optional[str] = None
-        self.pending_run_id: Optional[str] = None
-        self.cards = []
-        self.callbacks = []
+        self.rename_mode = False
+        self.action: tuple[str, Optional[str]] = ("quit", None)
+        self.visible_items = []
 
         self.view = ui.View()
         self.view.title = "Launcher Pro"
@@ -37,7 +40,8 @@ class LauncherProView:
         self.view.layout = self.layout
 
         self.title = self._label("Launcher Pro", 24, True, theme.TEXT)
-        self.subtitle = self._label("Toucher pour lancer · appui long pour renommer", 12, False, theme.MUTED)
+        self.subtitle = self._label("Touchez une ligne pour lancer", 12, False, theme.MUTED)
+
         self.search = ui.TextField(placeholder="Rechercher")
         self.search.background_color = theme.SURFACE
         self.search.text_color = theme.TEXT
@@ -46,17 +50,26 @@ class LauncherProView:
 
         self.add_script = self._button("＋ Script", self.on_add_script, theme.PRIMARY, theme.TEXT)
         self.add_project = self._button("＋ Projet", self.on_add_project, theme.SURFACE_ALT, theme.PRIMARY)
+        self.rename_button = self._button("Renommer", self.on_rename_mode, theme.SURFACE_ALT, theme.PRIMARY)
+
         self.filter_all = self._button("Tous", self.on_filter_all, theme.PRIMARY, theme.TEXT)
         self.filter_scripts = self._button("Scripts", self.on_filter_scripts, theme.SURFACE_ALT, theme.PRIMARY)
         self.filter_projects = self._button("Projets", self.on_filter_projects, theme.SURFACE_ALT, theme.PRIMARY)
 
-        self.scroll = ui.ScrollView()
-        self.scroll.background_color = theme.BACKGROUND
-        self.scroll_host = getattr(self.scroll, "content_view", self.scroll)
+        self.table = ui.TableView()
+        self.table.background_color = theme.BACKGROUND
 
         for control in (
-            self.title, self.subtitle, self.search, self.add_script, self.add_project,
-            self.filter_all, self.filter_scripts, self.filter_projects, self.scroll,
+            self.title,
+            self.subtitle,
+            self.search,
+            self.add_script,
+            self.add_project,
+            self.rename_button,
+            self.filter_all,
+            self.filter_scripts,
+            self.filter_projects,
+            self.table,
         ):
             self.view.add_subview(control)
 
@@ -84,144 +97,84 @@ class LauncherProView:
         width, height = self.view.width, self.view.height
         margin = 16
         usable = width - margin * 2
-        self.title.frame = (margin, 14, usable, 32)
-        self.subtitle.frame = (margin, 47, usable, 22)
-        self.search.frame = (margin, 82, usable, 44)
-        half = (usable - 10) / 2
-        self.add_script.frame = (margin, 138, half, 44)
-        self.add_project.frame = (margin + half + 10, 138, half, 44)
-        segment = (usable - 12) / 3
-        self.filter_all.frame = (margin, 194, segment, 38)
-        self.filter_scripts.frame = (margin + segment + 6, 194, segment, 38)
-        self.filter_projects.frame = (margin + (segment + 6) * 2, 194, segment, 38)
-        scroll_y = 244
-        self.scroll.frame = (0, scroll_y, width, max(1, height - scroll_y))
-        self.layout_cards()
 
-    def clear_cards(self) -> None:
-        for card in self.cards:
-            try:
-                card["container"].remove_from_superview()
-            except Exception:
-                pass
-        self.cards = []
-        self.callbacks = []
+        self.title.frame = (margin, 12, usable, 32)
+        self.subtitle.frame = (margin, 44, usable, 22)
+        self.search.frame = (margin, 76, usable, 42)
+
+        third = (usable - 16) / 3
+        self.add_script.frame = (margin, 130, third, 42)
+        self.add_project.frame = (margin + third + 8, 130, third, 42)
+        self.rename_button.frame = (margin + (third + 8) * 2, 130, third, 42)
+
+        segment = (usable - 12) / 3
+        self.filter_all.frame = (margin, 182, segment, 36)
+        self.filter_scripts.frame = (margin + segment + 6, 182, segment, 36)
+        self.filter_projects.frame = (margin + (segment + 6) * 2, 182, segment, 36)
+
+        table_y = 230
+        self.table.frame = (0, table_y, width, max(1, height - table_y))
 
     def refresh(self) -> None:
         self.registry = Registry.load()
-        self.clear_cards()
-        items = self.registry.search(self.query, self.filter_kind)
-        for item in items:
-            self._add_card(item)
-        if not items:
-            self._add_empty_card()
-        self._style_filters()
-        self.layout_cards()
+        self.visible_items = self.registry.search(self.query, self.filter_kind)
+        cells = []
 
-    def _add_empty_card(self) -> None:
-        container = ui.View()
-        container.background_color = theme.CARD
-        container.corner_radius = 16
-        label = self._label("Aucun script ou projet", 16, True, theme.TEXT)
-        detail = self._label("Ajoute un script autonome ou un projet Pyto.", 12, False, theme.MUTED)
-        container.add_subview(label)
-        container.add_subview(detail)
-        self.scroll_host.add_subview(container)
-        self.cards.append({"container": container, "label": label, "detail": detail, "button": None, "menu": None})
+        if not self.visible_items:
+            cell = ui.TableViewCell()
+            cell.text_label.text = "Aucun script ou projet"
+            cells.append(cell)
+        else:
+            for item in self.visible_items:
+                cell = ui.TableViewCell()
+                prefix = "APP" if item.kind == "project" else "PY"
+                star = "★ " if item.favorite else ""
+                cell.text_label.text = f"{star}{prefix}  {item.name}"
+                try:
+                    detail = item.entry_script if item.kind == "project" else item.category
+                    cell.detail_text_label.text = detail
+                except Exception:
+                    pass
+                cells.append(cell)
 
-    def _add_card(self, item) -> None:
-        container = ui.View()
-        container.background_color = theme.CARD
-        container.corner_radius = 16
-        kind = "APP" if item.kind == "project" else "PY"
-        badge = self._label(kind, 13, True, theme.PRIMARY)
-        badge.background_color = theme.PRIMARY_SOFT
-        badge.corner_radius = 10
-        badge.text_alignment = ALIGN_CENTER
-        title = self._label(item.name, 17, True, theme.TEXT)
-        detail_text = item.entry_script if item.kind == "project" else item.category
-        detail = self._label(("Projet · " if item.kind == "project" else "Script · ") + detail_text, 11, False, theme.MUTED)
-        status = self._label(self._status_text(item), 11, False, theme.MUTED)
-        run_callback = self._make_run_callback(item.id)
-        menu_callback = self._make_menu_callback(item.id)
-        self.callbacks.extend((run_callback, menu_callback))
-        run_button = self._button("Lancer", run_callback, theme.PRIMARY, theme.TEXT)
-        menu_button = self._button("•••", menu_callback, theme.SURFACE_ALT, theme.PRIMARY)
-        for sub in (badge, title, detail, status, run_button, menu_button):
-            container.add_subview(sub)
-        self.scroll_host.add_subview(container)
-        self.cards.append({
-            "container": container, "badge": badge, "title": title, "detail": detail,
-            "status": status, "button": run_button, "menu": menu_button,
-        })
-
-    def _make_run_callback(self, item_id: str):
-        def callback(sender) -> None:
-            self.pending_run_id = item_id
-            try:
-                self.view.close()
-            except Exception:
-                pass
-        return callback
-
-    def _make_menu_callback(self, item_id: str):
-        def callback(sender) -> None:
-            self.rename_dialog(item_id)
-        return callback
-
-    def rename_dialog(self, item_id: str) -> None:
-        item = Registry.load().require(item_id)
-        alert = ui.Alert(title="Renommer", message="Nouveau nom")
-        field = ui.TextField(text=item.name)
-        alert.add_text_field(field)
-        alert.add_action("Annuler")
-        alert.add_action("Enregistrer")
-        choice = str(alert.show())
-        if choice in {"1", "Enregistrer"} or choice.endswith("Enregistrer"):
-            try:
-                rename_item(item_id, field.text or "")
-                self.refresh()
-            except Exception as exc:
-                self._alert("Renommage impossible", str(exc))
-
-    @staticmethod
-    def _status_text(item) -> str:
-        if item.last_status == "success":
-            duration = f" · {item.last_duration:.2f}s" if item.last_duration is not None else ""
-            return f"Réussi{duration} · {item.run_count} lancement(s)"
-        if item.last_status == "error":
-            return f"Dernière exécution en erreur · {item.run_count} lancement(s)"
-        return "Jamais lancé"
-
-    def layout_cards(self) -> None:
-        y = 8
-        width = max(300, self.scroll.width - 28)
-        for card in self.cards:
-            container = card["container"]
-            if card.get("button") is None:
-                container.frame = (14, y, width, 92)
-                card["label"].frame = (16, 16, width - 32, 28)
-                card["detail"].frame = (16, 46, width - 32, 24)
-                y += 104
-                continue
-            container.frame = (14, y, width, 98)
-            card["badge"].frame = (12, 20, 48, 48)
-            card["title"].frame = (72, 10, width - 220, 28)
-            card["detail"].frame = (72, 38, width - 220, 20)
-            card["status"].frame = (72, 60, width - 220, 20)
-            card["menu"].frame = (width - 136, 27, 48, 44)
-            card["button"].frame = (width - 82, 23, 68, 52)
-            y += 110
-        height = max(self.scroll.height + 1, y + 8)
-        self.scroll.content_size = (self.scroll.width, height)
+        section = ui.TableViewSection("Bibliothèque", cells)
+        section.did_select_cell = self.on_select_cell
+        self.table.sections = [section]
         try:
-            self.scroll_host.frame = (0, 0, self.scroll.width, height)
+            self.table.reload()
         except Exception:
             pass
+        self._style_filters()
+
+    def on_select_cell(self, section, index) -> None:
+        if not self.visible_items or index < 0 or index >= len(self.visible_items):
+            return
+        item_id = self.visible_items[index].id
+        self.action = ("rename" if self.rename_mode else "run", item_id)
+        self.view.close()
 
     def on_search(self, sender) -> None:
         self.query = (sender.text or "").strip()
         self.refresh()
+
+    def on_add_script(self, sender) -> None:
+        self.action = ("add_script", None)
+        self.view.close()
+
+    def on_add_project(self, sender) -> None:
+        self.action = ("add_project", None)
+        self.view.close()
+
+    def on_rename_mode(self, sender) -> None:
+        self.rename_mode = not self.rename_mode
+        sender.title = "Annuler" if self.rename_mode else "Renommer"
+        sender.background_color = theme.PRIMARY if self.rename_mode else theme.SURFACE_ALT
+        sender.tint_color = theme.TEXT if self.rename_mode else theme.PRIMARY
+        self.subtitle.text = (
+            "Touchez la ligne à renommer"
+            if self.rename_mode
+            else "Touchez une ligne pour lancer"
+        )
 
     def on_filter_all(self, sender) -> None:
         self.filter_kind = None
@@ -236,70 +189,89 @@ class LauncherProView:
         self.refresh()
 
     def _style_filters(self) -> None:
-        for button, value in ((self.filter_all, None), (self.filter_scripts, "script"), (self.filter_projects, "project")):
+        for button, value in (
+            (self.filter_all, None),
+            (self.filter_scripts, "script"),
+            (self.filter_projects, "project"),
+        ):
             active = self.filter_kind == value
             button.background_color = theme.PRIMARY if active else theme.SURFACE_ALT
             button.tint_color = theme.TEXT if active else theme.PRIMARY
 
-    def on_add_script(self, sender) -> None:
-        try:
-            path = pick_file()
-            import_script(path, registry=Registry.load())
-            self.refresh()
-        except Exception as exc:
-            self._alert("Script non ajouté", str(exc))
-
-    def on_add_project(self, sender) -> None:
-        try:
-            root = Path(pick_directory())
-            files = list_python_files(root)
-            if not files:
-                raise ValueError("Aucun fichier .py trouvé dans ce dossier")
-            entry = self.choose_entry(root, files)
-            if entry is None:
-                return
-            add_project(root, entry, registry=Registry.load())
-            self.refresh()
-        except Exception as exc:
-            self._alert("Projet non ajouté", str(exc))
-
-    def choose_entry(self, root: Path, files: list[Path]) -> Optional[str]:
-        alert = ui.Alert(title="Fichier de lancement", message="Choisis le module à exécuter")
-        actions = ["Annuler"]
-        shown = files[:20]
-        alert.add_action("Annuler")
-        for path in shown:
-            relative = str(path.relative_to(root))
-            actions.append(relative)
-            alert.add_action(relative)
-        choice = str(alert.show())
-        if choice in {"0", "Annuler"} or choice.endswith("Annuler"):
-            return None
-        for index, title in enumerate(actions[1:], start=1):
-            if choice == str(index) or choice == title or choice.endswith(title):
-                return title
-        return None
-
-    @staticmethod
-    def _alert(title: str, message: str) -> None:
-        alert = ui.Alert(title=title, message=message)
-        alert.add_action("OK")
-        alert.show()
-
-    def present(self) -> Optional[str]:
+    def present(self) -> tuple[str, Optional[str]]:
         if SHEET is None:
             ui.show_view(self.view)
         else:
             ui.show_view(self.view, SHEET)
-        return self.pending_run_id
+        return self.action
 
 
-def present_launcher() -> None:
-    controller = LauncherProView()
-    item_id = controller.present()
-    if item_id:
-        item, result = run_by_id(item_id)
-        if result.output:
-            print(result.output, end="")
-        if not result.success:
-            raise RuntimeError(result.error or f"Échec de {item.name}")
+def present_launcher_once() -> tuple[str, Optional[str]]:
+    return LauncherProView().present()
+
+
+def choose_entry_script(root: Path, files: list[Path]) -> Optional[str]:
+    """Affiche une liste native scrollable des fichiers .py du projet."""
+    state = {"entry": None}
+    view = ui.View()
+    view.title = "Fichier de lancement"
+    view.background_color = theme.BACKGROUND
+    table = ui.TableView()
+    table.background_color = theme.BACKGROUND
+
+    ordered = sorted(
+        files,
+        key=lambda p: (
+            0 if p.name.lower() in {"main.py", "app.py", "bootstrap.py", "run.py", "launcher.py"} else 1,
+            len(p.relative_to(root).parts),
+            str(p.relative_to(root)).lower(),
+        ),
+    )
+    cells = []
+    for path in ordered:
+        cell = ui.TableViewCell()
+        cell.text_label.text = str(path.relative_to(root))
+        cells.append(cell)
+
+    def selected(section, index) -> None:
+        if 0 <= index < len(ordered):
+            state["entry"] = str(ordered[index].relative_to(root))
+            view.close()
+
+    section = ui.TableViewSection("Choisissez le module à exécuter", cells)
+    section.did_select_cell = selected
+    table.sections = [section]
+
+    def layout() -> None:
+        table.frame = (0, 0, view.width, view.height)
+
+    view.layout = layout
+    view.add_subview(table)
+    if SHEET is None:
+        ui.show_view(view)
+    else:
+        ui.show_view(view, SHEET)
+    return state["entry"]
+
+
+def prompt_rename(current_name: str) -> Optional[str]:
+    alert = ui.Alert(title="Renommer", message="Saisissez le nouveau nom")
+    field = ui.TextField(text=current_name)
+    alert.add_text_field(field)
+    alert.add_action("Annuler")
+    alert.add_action("Enregistrer")
+    raw = alert.show()
+    text = str(raw).strip()
+    accepted = raw == 1 or text == "1" or text == "Enregistrer" or text.endswith("Enregistrer")
+    if not accepted:
+        return None
+    value = (field.text or "").strip()
+    if not value:
+        raise ValueError("Le nom ne peut pas être vide")
+    return value
+
+
+def show_message(title: str, message: str) -> None:
+    alert = ui.Alert(title=title, message=message)
+    alert.add_action("OK")
+    alert.show()
