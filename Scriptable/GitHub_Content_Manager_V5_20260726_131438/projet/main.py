@@ -1,4 +1,4 @@
-from ui_app import GitHubContentManagerApp
+from ui_app_pyto import GitHubContentManagerApp
 
 
 if __name__ == "__main__":
