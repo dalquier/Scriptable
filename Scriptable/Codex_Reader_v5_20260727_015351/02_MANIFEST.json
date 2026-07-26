@@ -1,0 +1,30 @@
+{
+  "project": "Codex Reader",
+  "version": "5.0.0",
+  "created_at": "2026-07-27T01:53:51+02:00",
+  "target": "Pyto iOS",
+  "python": ">=3.10",
+  "entrypoint": "projet/app.py",
+  "repository": "dalquier/Scriptable",
+  "branch": "main",
+  "delivery_root": "Scriptable/Codex_Reader_v5_20260727_015351",
+  "files": [
+    "00_README.md",
+    "01_ARBORESCENCE.md",
+    "02_MANIFEST.json",
+    "03_INSTALLATION.md",
+    "04_CHANGELOG.md",
+    "projet/app.py",
+    "projet/browser_adapter.py",
+    "projet/extractor.py",
+    "projet/renderer.py",
+    "projet/storage.py",
+    "projet/diagnostics.py",
+    "projet/README.md"
+  ],
+  "security": {
+    "stores_credentials": false,
+    "imports_safari_cookies": false,
+    "requires_manual_login": true
+  }
+}
