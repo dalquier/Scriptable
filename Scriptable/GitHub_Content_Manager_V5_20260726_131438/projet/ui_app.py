@@ -71,7 +71,10 @@ class GitHubContentManagerApp:
     def run(self):
         self.root = ui.View()
         self.root.name = "GitHub Content Manager V5"
-        self.web = ui.WebView(frame=(0, 0, self.root.width, self.root.height))
+
+        # Compatibilité Pyto : WebView() n'accepte pas toujours l'argument frame.
+        self.web = ui.WebView()
+        self.web.frame = (0, 0, self.root.width, self.root.height)
         self.web.flex = [ui.FLEXIBLE_WIDTH, ui.FLEXIBLE_HEIGHT]
         self.web.load_html(HTML)
         self.web.delegate = self
