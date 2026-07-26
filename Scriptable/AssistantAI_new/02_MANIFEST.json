@@ -1,0 +1,16 @@
+{
+  "project_name": "AssistantAI new",
+  "version": "5.0.1",
+  "repository": "dalquier/Scriptable",
+  "branch": "assistantai-new",
+  "root_folder": "Scriptable/AssistantAI_new",
+  "entrypoint": "projet/main.py",
+  "status": "work-in-progress",
+  "source_project": "Scriptable/AssistantIA_v5",
+  "notes": [
+    "Version applicative alignée sur 5.0.1",
+    "Le projet doit reprendre les fichiers Codex stabilisés",
+    "Validation Pyto/iPhone encore requise",
+    "config_local.py et les bases SQLite ne doivent jamais être versionnés"
+  ]
+}
