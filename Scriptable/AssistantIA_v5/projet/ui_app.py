@@ -11,7 +11,7 @@ from api_client import OpenAIClientError
 from app import AssistantIAApp
 from config import APP_NAME, APP_VERSION
 
-TOP_SAFE = 54
+TOP_SAFE_FALLBACK = 50
 HEADER_HEIGHT = 64
 TOOLBAR_HEIGHT = 58
 STATUS_HEIGHT = 24
@@ -57,6 +57,7 @@ class AssistantIAView(ui.View):
         self.web_enabled = False
         self.is_sending = False
         self.app = AssistantIAApp()
+        self._closed = False
         self._build_ui()
 
         try:
@@ -142,17 +143,21 @@ class AssistantIAView(ui.View):
         self.composer_panel.add_subview(self.send_button)
 
     def layout(self) -> None:
-        width = max(320, self.width)
-        height = max(480, self.height)
+        width = max(320, float(self.width or 0))
+        height = max(480, float(self.height or 0))
+        # Certaines versions exposent safe_area_insets, d'autres non. En plein
+        # écran iPhone, le repli évite l'encoche sans dépendre d'UIKit.
+        safe = getattr(self, "safe_area_insets", None)
+        top_safe = max(TOP_SAFE_FALLBACK, float(getattr(safe, "top", 0) or 0))
 
-        self.header.frame = (0, TOP_SAFE, width, HEADER_HEIGHT)
+        self.header.frame = (0, top_safe, width, HEADER_HEIGHT)
         self.title_label.frame = (16, 8, max(120, width - 112), 28)
         self.subtitle_label.frame = (16, 35, max(120, width - 112), 20)
         self.close_button.frame = (width - 86, 13, 74, 38)
 
         toolbar_y = height - TOOLBAR_HEIGHT
         status_y = toolbar_y - STATUS_HEIGHT
-        content_y = TOP_SAFE + HEADER_HEIGHT + 10
+        content_y = top_safe + HEADER_HEIGHT + 10
         content_h = max(130, status_y - content_y - 8)
 
         self.transcript_card.frame = (MARGIN, content_y, width - 2 * MARGIN, content_h)
@@ -165,7 +170,9 @@ class AssistantIAView(ui.View):
         self.write_button.frame = (222, 9, max(88, width - 232), 40)
 
         panel_w = width - 2 * MARGIN
-        panel_y = TOP_SAFE + HEADER_HEIGHT + 14
+        # Le panneau est volontairement placé dans la moitié supérieure: il
+        # demeure visible avec le clavier, même sans notifications UIKit.
+        panel_y = top_safe + HEADER_HEIGHT + 10
         self.composer_panel.frame = (MARGIN, panel_y, panel_w, PANEL_HEIGHT)
         self.composer_title.frame = (14, 10, panel_w - 28, 28)
         self.composer_hint.frame = (14, 38, panel_w - 28, 20)
@@ -207,6 +214,8 @@ class AssistantIAView(ui.View):
     def close_app(self, sender: Any) -> None:
         """Ferme la vue racine selon l'API Pyto officielle."""
         self._close_composer(clear=False)
+        self._closed = True
+        self.app.close()
 
         # Le bouton est enfant de header, lui-même enfant de la vue racine.
         # Pyto recommande d'appeler close() sur la vue racine depuis l'action.
@@ -262,8 +271,9 @@ class AssistantIAView(ui.View):
 
     def _send_worker(self, text: str) -> None:
         error = None
+        result = None
         try:
-            self.app.send_message(text, enable_web_search=self.web_enabled)
+            result = self.app.send_message(text, enable_web_search=self.web_enabled)
         except (OpenAIClientError, RuntimeError, ValueError) as exc:
             error = str(exc)
         except Exception as exc:
@@ -272,17 +282,31 @@ class AssistantIAView(ui.View):
         def finish() -> None:
             self.is_sending = False
             self._set_buttons_enabled(True)
-            self.status.text = error or "Prêt"
+            if error:
+                self.status.text = error
+            elif result and result.get("web_used"):
+                count = len(result.get("sources", []))
+                self.status.text = "Réponse avec recherche Web" + (" · {0} source(s)".format(count) if count else "")
+            else:
+                self.status.text = "Prêt"
             self.refresh_messages()
 
         delay = getattr(ui, "delay", None)
         if callable(delay):
+            # Signature observée selon les versions: delay(seconds, callable)
+            # ou delay(callable, seconds).
             try:
-                delay(finish, 0)
+                delay(0, finish)
                 return
             except Exception:
-                pass
-        finish()
+                try:
+                    delay(finish, 0)
+                    return
+                except Exception:
+                    pass
+        # Anciennes versions sans ordonnanceur: la vue est rafraîchie au mieux.
+        if not self._closed:
+            finish()
 
     def refresh_messages(self, extra_user: str = None) -> None:
         messages = list(self.app.get_messages())

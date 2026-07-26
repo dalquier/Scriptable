@@ -20,6 +20,11 @@ class ConversationManager:
 
     def add_user_message(self, content: str) -> None:
         self.storage.add_message(self.conversation_id, "user", content)
+        messages = self.storage.get_messages(self.conversation_id)
+        if len(messages) == 1:
+            title = " ".join(content.strip().split())[:48]
+            if title:
+                self.storage.rename_conversation(self.conversation_id, title)
 
     def add_assistant_message(self, content: str) -> None:
         self.storage.add_message(self.conversation_id, "assistant", content)
