@@ -26,13 +26,10 @@ class LibraryService:
     """Façade unique pour gérer la bibliothèque Launcher Pro."""
 
     def __init__(self, registry: Registry | None = None) -> None:
-        self.registry = registry or Registry()
+        self.registry = registry or Registry.load()
 
     def list_items(self, query: str = "", kind: str | None = None) -> list[LauncherItem]:
-        items = self.registry.search(query) if query.strip() else self.registry.list_all()
-        if kind is not None:
-            items = [item for item in items if item.kind == kind]
-        return sorted(items, key=lambda item: (not item.favorite, item.name.casefold()))
+        return self.registry.search(query=query, kind=kind)
 
     def inspect_project(self, source_directory: str | Path) -> list[str]:
         """Retourne les points d'entrée possibles dans l'ordre recommandé."""
@@ -56,11 +53,11 @@ class LibraryService:
     def add_project(
         self,
         source_directory: str | Path,
-        entry_point: str,
+        entry_script: str,
         display_name: str | None = None,
     ) -> LauncherItem:
         log("LIBRARY", f"Demande d'ajout de projet : {source_directory}")
-        item = import_project(source_directory, entry_point, display_name)
+        item = import_project(source_directory, entry_script, display_name)
         try:
             self.registry.add(item)
         except Exception:
@@ -69,37 +66,33 @@ class LibraryService:
         return item
 
     def rename(self, item_id: str, new_name: str) -> LauncherItem:
-        item = self.registry.get(item_id)
-        if item is None:
-            raise KeyError(f"Élément introuvable : {item_id}")
-
+        item = self.registry.require(item_id)
         updated = rename_imported_folder(item, new_name)
         try:
             self.registry.update(updated)
         except Exception:
-            # Tentative de retour arrière du renommage physique.
-            try:
-                rename_imported_folder(updated, item.name)
-            except Exception as rollback_error:
-                log("LIBRARY", f"Échec du retour arrière : {rollback_error}", level="ERROR")
+            log(
+                "LIBRARY",
+                "Le dossier a été renommé mais la mise à jour du registre a échoué",
+                level="ERROR",
+            )
             raise
         return updated
 
     def set_favorite(self, item_id: str, favorite: bool) -> LauncherItem:
-        item = self.registry.get_required(item_id)
+        item = self.registry.require(item_id)
         item.favorite = bool(favorite)
         self.registry.update(item)
         log("LIBRARY", f"Favori {item.name} = {item.favorite}")
         return item
 
     def delete(self, item_id: str, delete_files: bool = True) -> LauncherItem:
-        item = self.registry.get_required(item_id)
+        item = self.registry.require(item_id)
         removed = self.registry.remove(item_id)
         if delete_files:
             try:
                 self._remove_files(item)
             except Exception as exc:
-                # Le registre est restauré si la suppression physique échoue.
                 self.registry.add(item)
                 raise RuntimeError(f"Suppression des fichiers impossible : {exc}") from exc
         log("LIBRARY", f"Élément supprimé : {item.name}")
