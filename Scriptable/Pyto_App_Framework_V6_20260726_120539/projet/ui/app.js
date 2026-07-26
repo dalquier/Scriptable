@@ -1,16 +1,18 @@
 (() => {
   "use strict";
 
-  let payload = window.__INITIAL_STATE__ || { state: {}, capabilities: {}, version: "6.0.0" };
+  let payload = window.__INITIAL_STATE__ || { state: {}, capabilities: {}, version: "6.0.3" };
 
   const byId = (id) => document.getElementById(id);
-  const encode = (value) => encodeURIComponent(String(value ?? ""));
 
   function send(action, parameters = {}) {
-    const query = Object.entries(parameters)
-      .map(([key, value]) => `${encode(key)}=${encode(value)}`)
-      .join("&");
-    window.location.href = `pytoapp://${action}${query ? `?${query}` : ""}`;
+    const handler = window.webkit?.messageHandlers?.pytoBridge;
+    if (!handler) {
+      window.alert("Le pont Pyto n'est pas disponible.");
+      return;
+    }
+
+    handler.postMessage({ action, parameters });
   }
 
   function applyTheme(theme) {
@@ -85,6 +87,7 @@
       const accepted = window.confirm("Réinitialiser toutes les données locales ?");
       if (!accepted) return;
     }
+
     send(action);
   });
 
