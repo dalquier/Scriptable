@@ -1,0 +1,26 @@
+{
+  "project": "GitHub Content Manager",
+  "version": "5.0.0",
+  "created_at": "2026-07-26T13:14:38+02:00",
+  "target": {
+    "repository": "dalquier/Scriptable",
+    "branch": "main",
+    "root": "Scriptable/"
+  },
+  "runtime": "Pyto iOS",
+  "entrypoint": "projet/main.py",
+  "dependencies": ["pyto_ui"],
+  "optional_dependencies": ["keyring"],
+  "files": [
+    "00_README.md",
+    "01_ARBORESCENCE.md",
+    "02_MANIFEST.json",
+    "03_INSTALLATION.md",
+    "04_CHANGELOG.md",
+    "projet/main.py",
+    "projet/github_api.py",
+    "projet/storage.py",
+    "projet/ui_app.py",
+    "projet/config.example.json"
+  ]
+}
