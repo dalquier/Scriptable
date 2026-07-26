@@ -1,0 +1,16 @@
+{
+  "name": "GitHub Content Manager",
+  "version": "6.1.0",
+  "target": "Pyto iOS",
+  "default_repository": "dalquier/Scriptable",
+  "default_branch": "main",
+  "default_root_path": "Scriptable",
+  "display_mode": "sheet",
+  "files": [
+    "projet/main.py",
+    "projet/native_app.py",
+    "projet/github_api.py",
+    "projet/storage.py",
+    "projet/config.py"
+  ]
+}
