@@ -1,0 +1,21 @@
+{
+  "project": "Codex Reader",
+  "version": "9.0.0",
+  "created_at": "2026-07-27T05:22:38+02:00",
+  "entrypoint": "projet/app.py",
+  "platform": "Pyto on iOS",
+  "python": ">=3.10",
+  "dependencies": [],
+  "files": [
+    "00_README.md",
+    "01_ARBORESCENCE.md",
+    "02_MANIFEST.json",
+    "03_INSTALLATION.md",
+    "04_CHANGELOG.md",
+    "projet/app.py",
+    "projet/extractor.py",
+    "projet/result_view.py",
+    "projet/storage.py",
+    "projet/diagnostics.py"
+  ]
+}
