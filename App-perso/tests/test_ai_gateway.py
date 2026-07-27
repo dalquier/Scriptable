@@ -2,19 +2,23 @@ from types import SimpleNamespace
 
 import pytest
 
-from shared.ai.config import AISettings
-from shared.ai.gateway import AIGateway, AIRequest, ModelRouter, TaskProfile
+from App_perso.shared.ai.config import AISettings
+from App_perso.shared.ai.gateway import AIGateway, AIRequest, ModelRouter, TaskProfile
 
 
 @pytest.fixture
 def settings() -> AISettings:
     return AISettings(
         api_key="test-key",
-        economy_model="economy-model",
-        balanced_model="balanced-model",
-        reasoning_model="reasoning-model",
-        coding_model="coding-model",
-        embedding_model="embedding-model",
+        economy_model="gpt-5.6-luna",
+        balanced_model="gpt-5.6-terra",
+        reasoning_model="gpt-5.6-sol",
+        coding_model="gpt-5.6-sol",
+        embedding_model="text-embedding-3-small",
+        economy_reasoning="none",
+        balanced_reasoning="low",
+        reasoning_reasoning="medium",
+        coding_reasoning="high",
         web_enabled=True,
         request_timeout_seconds=30.0,
         max_retries=1,
@@ -34,7 +38,7 @@ def test_explicit_profile_overrides_heuristics() -> None:
     )
 
 
-def test_gateway_adds_web_search_and_sources(settings: AISettings) -> None:
+def test_gateway_adds_web_search_sources_and_reasoning(settings: AISettings) -> None:
     class Connector:
         name = "github"
 
@@ -58,8 +62,11 @@ def test_gateway_adds_web_search_and_sources(settings: AISettings) -> None:
     assert result.text == "Réponse"
     assert result.web_enabled is True
     assert result.profile is TaskProfile.REASONING
+    assert result.model == "gpt-5.6-sol"
+    assert result.reasoning_effort == "medium"
     assert result.sources[0]["connector"] == "github"
     assert responses.payload["tools"] == [{"type": "web_search"}]
+    assert responses.payload["reasoning"] == {"effort": "medium"}
     assert "README.md" in responses.payload["input"]
 
 
@@ -83,4 +90,7 @@ def test_gateway_can_disable_web_per_request(settings: AISettings) -> None:
     )
 
     assert result.web_enabled is False
+    assert result.profile is TaskProfile.ECONOMY
+    assert result.model == "gpt-5.6-luna"
+    assert result.reasoning_effort == "none"
     assert "tools" not in responses.payload
