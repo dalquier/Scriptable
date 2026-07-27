@@ -9,6 +9,7 @@ All projects use one internal service or package named `AIGateway`. Application 
 The gateway owns:
 - authentication;
 - model routing;
+- reasoning effort;
 - web search and tool configuration;
 - file retrieval connectors;
 - timeouts, retries and rate limits;
@@ -37,16 +38,23 @@ Forbidden:
 
 `.env.example` may contain only `OPENAI_API_KEY=` with no value.
 
+## Current default model routing
+The model IDs remain runtime configuration, but the approved starting defaults are:
+
+| Profile | Default model | Default reasoning | Purpose |
+|---|---|---:|---|
+| `economy` | `gpt-5.6-luna` | `none` | extraction, classification, formatting, high-volume simple work |
+| `balanced` | `gpt-5.6-terra` | `low` | normal chat, document synthesis, routine tool use and ordinary coding |
+| `reasoning` | `gpt-5.6-sol` | `medium` | architecture, difficult debugging, multi-document analysis and important decisions |
+| `coding` | `gpt-5.6-sol` | `high` | repository-scale implementation, refactoring, review and test generation |
+| `embedding` | `text-embedding-3-small` | not applicable | economical RAG indexing and semantic search |
+
+Use `text-embedding-3-large` only when representative retrieval evaluations demonstrate a material quality gain worth the additional cost.
+
+The `gpt-5.6` alias resolves to `gpt-5.6-sol`, but explicit family IDs are preferred in configuration so cost intent is visible.
+
 ## Dynamic model routing
-Never hard-code one model for every request. Select by capability profile:
-
-- `economy`: classification, extraction, formatting, simple summaries, high-volume tasks.
-- `balanced`: standard chat, document synthesis, ordinary coding and tool use.
-- `reasoning`: architecture, difficult debugging, multi-document analysis, critical decisions.
-- `coding`: repository-scale implementation, refactoring and test generation.
-- `embedding`: RAG indexing and semantic search.
-
-The actual model IDs are defined centrally in runtime configuration and may be changed without modifying application code.
+Never hard-code one model for every request. Select by capability profile.
 
 Routing inputs:
 - task type;
@@ -59,7 +67,17 @@ Routing inputs:
 - budget ceiling;
 - previous attempt failure.
 
-Escalation rule: start with the cheapest profile likely to succeed; escalate once when validation fails or confidence is insufficient. Do not repeatedly retry expensive models without an explicit limit.
+Escalation rule:
+1. Start with the cheapest profile likely to meet the acceptance criteria.
+2. Validate the result when the task is machine-checkable or high impact.
+3. Escalate at most one profile level when validation fails or confidence is insufficient.
+4. Do not repeatedly retry expensive models without an explicit bounded policy.
+5. Benchmark model and reasoning choices on representative project tasks before changing the shared defaults.
+
+Reasoning effort is selected independently from the model. Prefer `none` or `low` for routine work, `medium` for difficult analysis, and `high` only for complex coding or high-value reasoning. Higher effort is not automatically better value.
+
+## Responses API
+Use the Responses API for new text, reasoning, tool-calling and multi-turn workflows. Preserve tool outputs and response identifiers when continuation semantics are used.
 
 ## Web access
 Web capability is available through an approved search/browse tool. Use it automatically when information may be current, external verification is needed, or the user explicitly requests it. Do not browse for stable local transformations.
@@ -87,14 +105,16 @@ Never send every file on every request.
 ## Reliability
 - Prefer structured outputs validated against schemas for machine-consumed responses.
 - Set explicit timeouts and bounded retries.
-- Record model profile, model ID, token usage, tool calls, latency and result status.
+- Record model profile, model ID, reasoning effort, token usage, tool calls, latency and result status.
 - Do not record secret values.
 - Provide a deterministic fallback when AI is unavailable.
+- Send a stable privacy-preserving safety identifier for end-user applications when appropriate.
 
 ## Cost controls
 - Cache safe deterministic results.
 - Deduplicate embeddings by checksum.
 - Summarize long history before resending it.
 - Use batch processing where supported.
+- Track cached tokens and cache-write tokens before enabling explicit prompt caching broadly.
 - Define per-request and per-project budget limits.
 - Alert on abnormal spend or request volume.
