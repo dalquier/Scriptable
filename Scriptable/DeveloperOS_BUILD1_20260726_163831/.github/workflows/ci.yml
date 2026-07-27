@@ -1,0 +1,26 @@
+name: DeveloperOS BUILD-1 CI
+
+on:
+  push:
+    branches: ["developeros/build-1"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    defaults:
+      run:
+        working-directory: Scriptable/DeveloperOS_BUILD1_20260726_163831
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - run: python scripts/validate_build1.py
+      - run: python scripts/run_demo.py
