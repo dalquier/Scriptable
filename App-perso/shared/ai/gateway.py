@@ -1,7 +1,7 @@
 """Shared OpenAI gateway for every App-perso project.
 
-The gateway centralizes model selection, web access, retries and future storage
-connectors. Business code must not instantiate the OpenAI client directly.
+The gateway centralizes model selection, reasoning effort, web access, retries and
+storage connectors. Business code must not instantiate the OpenAI client directly.
 """
 
 from __future__ import annotations
@@ -45,13 +45,14 @@ class AIResult:
     text: str
     model: str
     profile: TaskProfile
+    reasoning_effort: str
     web_enabled: bool
     sources: tuple[dict[str, Any], ...]
     response_id: str | None
 
 
 class ModelRouter:
-    """Selects the cheapest configured model suitable for the task."""
+    """Selects the cheapest configured model and effort suitable for the task."""
 
     _CODING_MARKERS = (
         "code", "python", "javascript", "typescript", "bug", "refactor",
@@ -95,6 +96,15 @@ class ModelRouter:
             )
         return model
 
+    @staticmethod
+    def reasoning_for(profile: TaskProfile, settings: AISettings) -> str:
+        return {
+            TaskProfile.ECONOMY: settings.economy_reasoning,
+            TaskProfile.BALANCED: settings.balanced_reasoning,
+            TaskProfile.REASONING: settings.reasoning_reasoning,
+            TaskProfile.CODING: settings.coding_reasoning,
+        }[profile]
+
 
 class AIGateway:
     """Single application-facing entry point for OpenAI and source retrieval."""
@@ -127,7 +137,7 @@ class AIGateway:
                     request.prompt,
                     limit=request.max_source_results,
                 )
-            except Exception as exc:  # Connector failure must not crash all AI access.
+            except Exception as exc:  # One connector must not disable all AI access.
                 gathered.append(
                     {
                         "connector": connector.name,
@@ -160,6 +170,7 @@ class AIGateway:
     def respond(self, request: AIRequest) -> AIResult:
         profile = self.router.choose_profile(request.prompt, request.profile)
         model = self.router.model_for(profile, self.settings)
+        reasoning_effort = self.router.reasoning_for(profile, self.settings)
         sources = self._retrieve_sources(request)
 
         use_web = self.settings.web_enabled if request.use_web is None else request.use_web
@@ -170,6 +181,7 @@ class AIGateway:
         payload: dict[str, Any] = {
             "model": model,
             "input": self._build_input(request.prompt, sources),
+            "reasoning": {"effort": reasoning_effort},
         }
         if tools:
             payload["tools"] = tools
@@ -179,6 +191,7 @@ class AIGateway:
             text=response.output_text,
             model=model,
             profile=profile,
+            reasoning_effort=reasoning_effort,
             web_enabled=use_web,
             sources=sources,
             response_id=getattr(response, "id", None),
