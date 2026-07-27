@@ -13,6 +13,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Iterable
 
+from config import IGNORED_PROJECT_NAMES, IGNORED_PROJECT_SUFFIXES
 from core.logger import log
 from core.models import LauncherItem
 from core.paths import PROJECTS_DIR, SCRIPTS_DIR, ensure_directories
@@ -98,12 +99,12 @@ def suggest_entry_points(files: Iterable[str]) -> list[str]:
     """Classe les points d'entrée probables avant les autres fichiers."""
     candidates = list(files)
     priorities = {
-        "main.py": 0,
-        "app.py": 1,
-        "launcher.py": 2,
+        "__main__.py": 0,
+        "main.py": 1,
+        "app.py": 2,
         "run.py": 3,
-        "start.py": 4,
-        "__main__.py": 5,
+        "launcher.py": 4,
+        "start.py": 5,
     }
     return sorted(
         candidates,
@@ -114,6 +115,42 @@ def suggest_entry_points(files: Iterable[str]) -> list[str]:
         ),
     )
 
+
+
+def detect_entry_point(project_directory: str | Path) -> str:
+    """Détecte sans ambiguïté le meilleur point d'entrée d'un projet."""
+    root = Path(project_directory).expanduser().resolve()
+    files = discover_python_files(root)
+    if not files:
+        raise ImporterError("Aucun fichier Python détecté dans le projet")
+    ranked = suggest_entry_points(files)
+    conventional = {"__main__.py", "main.py", "app.py", "run.py", "launcher.py", "start.py"}
+    named = [value for value in ranked if Path(value).name.casefold() in conventional]
+    if named:
+        return named[0]
+    guarded: list[str] = []
+    for relative in files:
+        source = (root / relative).read_text(encoding="utf-8-sig")
+        try:
+            tree = ast.parse(source, filename=relative)
+        except SyntaxError:
+            continue
+        if any(
+            isinstance(node, ast.If)
+            and isinstance(node.test, ast.Compare)
+            and isinstance(node.test.left, ast.Name)
+            and node.test.left.id == "__name__"
+            and len(node.test.comparators) == 1
+            and isinstance(node.test.comparators[0], ast.Constant)
+            and node.test.comparators[0].value == "__main__"
+            for node in ast.walk(tree)
+        ):
+            guarded.append(relative)
+    if guarded:
+        return guarded[0]
+    if len(files) == 1:
+        return files[0]
+    raise ImporterError("Point d'entrée ambigu : une sélection explicite est nécessaire")
 
 def import_script(source_path: str | Path, display_name: str | None = None) -> LauncherItem:
     """Copie un script dans library/scripts et construit son entrée de registre."""
@@ -167,9 +204,11 @@ def import_project(
         shutil.copytree(
             source,
             destination,
-            ignore=shutil.ignore_patterns(
-                ".git", "__pycache__", ".pytest_cache", ".mypy_cache", ".DS_Store"
-            ),
+            ignore=lambda _directory, names: {
+                name for name in names
+                if name in IGNORED_PROJECT_NAMES
+                or Path(name).suffix.casefold() in IGNORED_PROJECT_SUFFIXES
+            },
         )
     except Exception:
         shutil.rmtree(destination, ignore_errors=True)
