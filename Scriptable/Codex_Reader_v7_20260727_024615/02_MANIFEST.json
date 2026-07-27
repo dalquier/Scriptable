@@ -1,0 +1,14 @@
+{
+  "name": "Codex Reader v7",
+  "version": "7.0.0",
+  "platform": "Pyto iOS",
+  "entrypoint": "projet/app.py",
+  "files": [
+    "projet/app.py",
+    "projet/browser_adapter.py",
+    "projet/analyzer.py",
+    "projet/result_view.py",
+    "projet/storage.py",
+    "projet/diagnostics.py"
+  ]
+}
