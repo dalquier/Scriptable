@@ -2,8 +2,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from App_perso.shared.ai.config import AISettings
-from App_perso.shared.ai.gateway import AIGateway, AIRequest, ModelRouter, TaskProfile
+from shared.ai.config import AISettings
+from shared.ai.gateway import AIGateway, AIRequest, ModelRouter, TaskProfile
 
 
 @pytest.fixture
