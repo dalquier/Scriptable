@@ -1,0 +1,13 @@
+{
+  "name": "Codex Reader v8 DEBUG",
+  "version": "8.0-debug",
+  "entrypoint": "projet/app.py",
+  "platform": "Pyto iOS",
+  "files": [
+    "projet/app.py",
+    "projet/debug_engine.py",
+    "projet/extractor.py",
+    "projet/result_view.py",
+    "projet/storage.py"
+  ]
+}
